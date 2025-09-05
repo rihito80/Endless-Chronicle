@@ -60,6 +60,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getNextLevelExp(level) { return level * 10; }
 
+    function getTotalMultipliers(character) {
+        const multipliers = {
+            str: 0.0, vit: 0.0, int: 0.0, mnd: 0.0, agi: 0.0, luk: 0.0, maxHp: 0.0, maxMp: 0.0
+        };
+
+        // スキルツリーによる乗算ボーナス
+        const jobSkillTree = SKILL_TREE_DATA[character.job] || {};
+        if (character.learnedSkillTreeNodes) {
+            character.learnedSkillTreeNodes.forEach(nodeKey => {
+                const node = jobSkillTree[nodeKey];
+                if (node && node.type === 'STAT_BOOST') {
+                    multipliers[node.stat] = (multipliers[node.stat] || 0.0) + node.value;
+                }
+            });
+        }
+
+        // 種族による乗算ボーナス
+        const race = RACE_MASTER_DATA[character.race];
+        if (race && race.stats) {
+            for (const stat in race.stats) {
+                multipliers[stat] = (multipliers[stat] || 0.0) + race.stats[stat];
+            }
+        }
+
+        // 特性による乗算ボーナス
+        if (character.traits) {
+            character.traits.forEach(traitKey => {
+                const trait = TRAIT_MASTER_DATA[traitKey];
+                if (trait && trait.stats) {
+                    for (const stat in trait.stats) {
+                        multipliers[stat] = (multipliers[stat] || 0.0) + trait.stats[stat];
+                    }
+                }
+            });
+        }
+        return multipliers;
+    }
+
     function getTotalStats(character) {
         if (!character || !character.stats) {
             console.error("getTotalStats was called with an invalid character:", character);
@@ -1246,6 +1284,44 @@ document.addEventListener('DOMContentLoaded', () => {
     // 7. UI画面構築
     // ========================================================================
 
+    function useConsumable(character, itemName) {
+        const item = ITEM_MASTER_DATA[itemName];
+        if (!item || !gameState.inventory[itemName] || gameState.inventory[itemName] <= 0) {
+            return; // Item doesn't exist or player doesn't have it
+        }
+
+        let effectApplied = false;
+        if (item.effect === 'stat_boost') {
+            const statToBoost = item.stat;
+            const boostValue = item.value;
+            if (character.permanentBonus.hasOwnProperty(statToBoost)) {
+                character.permanentBonus[statToBoost] += boostValue;
+                if (statToBoost === 'hp') character.hp += boostValue;
+                if (statToBoost === 'mp') character.mp += boostValue;
+                effectApplied = true;
+            }
+        } else if (item.effect === 'stat_boost_all') {
+            item.stats.forEach(boost => {
+                if (character.permanentBonus.hasOwnProperty(boost.stat)) {
+                    character.permanentBonus[boost.stat] += boost.value;
+                }
+            });
+            // Also boost current HP/MP if max is boosted
+            if (item.stats.some(s => s.stat === 'hp')) character.hp = getTotalStats(character).maxHp;
+            if (item.stats.some(s => s.stat === 'mp')) character.mp = getTotalStats(character).maxMp;
+            effectApplied = true;
+        }
+
+        if (effectApplied) {
+            gameState.inventory[itemName]--;
+            if (gameState.inventory[itemName] <= 0) {
+                delete gameState.inventory[itemName];
+            }
+            // Refresh the screen to show updated stats and inventory
+            openCharacterDetailScreen(character.id);
+        }
+    }
+
     function openCharacterDetailScreen(charId) {
         const character = gameState.roster.find(c => c.id === charId);
         if (!character) return;
@@ -1264,6 +1340,23 @@ document.addEventListener('DOMContentLoaded', () => {
             <span>🧙 INT: ${stats.int}</span><span>🙏 MND: ${stats.mnd}</span>
             <span>🏃 AGI: ${stats.agi}</span><span>🍀 LUK: ${stats.luk}</span>
         `;
+
+        const multipliers = getTotalMultipliers(character);
+        const multipliersContainer = document.getElementById('char-detail-multipliers');
+        const statNameMap = { maxHp: '最大HP', maxMp: '最大MP', str: '力', vit: '体力', int: '知力', mnd: '精神', agi: '速さ', luk: '運' };
+        let multipliersHtml = '<strong>補正合計:</strong> ';
+        let hasBonuses = false;
+        for (const stat in multipliers) {
+            if (multipliers[stat] !== 0) {
+                hasBonuses = true;
+                const sign = multipliers[stat] > 0 ? '+' : '';
+                const displayValue = Math.round(multipliers[stat] * 100);
+                const statName = statNameMap[stat] || stat.toUpperCase();
+                const colorClass = multipliers[stat] > 0 ? 'log-heal' : 'log-damage';
+                multipliersHtml += `<span class="${colorClass}" style="margin-right: 10px;">${statName} ${sign}${displayValue}%</span>`;
+            }
+        }
+        multipliersContainer.innerHTML = hasBonuses ? multipliersHtml : '<strong>補正合計:</strong> なし';
 
         // EXPバーを更新
         const nextLevelExp = getNextLevelExp(character.level);
@@ -1295,25 +1388,27 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         const inventoryContainer = document.getElementById('char-detail-inventory');
+        const consumablesContainer = document.getElementById('char-detail-consumables');
         inventoryContainer.innerHTML = '';
+        consumablesContainer.innerHTML = '';
+
         for (const itemName in gameState.inventory) {
             const item = ITEM_MASTER_DATA[itemName];
+            if (!item) continue;
+
+            const quantity = gameState.inventory[itemName];
+            if (quantity <= 0) continue;
+
+            const entryDiv = document.createElement('div');
+            entryDiv.className = 'item-list-entry';
+            entryDiv.innerHTML = `
+                <div style="flex-grow: 1; overflow: hidden;">
+                    <span style="word-break: break-all;">${itemName} (x${quantity})</span>
+                    <div class="skill-desc" style="font-size: 12px; opacity: 0.8; margin-top: 4px; word-break: break-all;">${item.desc || ''}</div>
+                </div>
+            `;
+
             if (['weapon', 'head', 'torso', 'hands', 'feet', 'accessory'].includes(item.type)) {
-                const entryDiv = document.createElement('div');
-                entryDiv.className = 'item-list-entry';
-
-                let details = '';
-                if (item.stats) {
-                    details = Object.entries(item.stats).map(([stat, val]) => `${stat.toUpperCase()}: ${val > 0 ? '+' : ''}${val}`).join(', ');
-                }
-
-                entryDiv.innerHTML = `
-                    <div style="flex-grow: 1; overflow: hidden;">
-                        <span style="word-break: break-all;">${itemName} (x${gameState.inventory[itemName]})</span>
-                        <div class="skill-desc" style="font-size: 12px; opacity: 0.8; margin-top: 4px; word-break: break-all;">${details}</div>
-                    </div>
-                `;
-
                 const equipBtn = document.createElement('button');
                 equipBtn.textContent = '装備';
                 if (item.jobRestriction && !item.jobRestriction.includes(character.job)) {
@@ -1323,6 +1418,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 equipBtn.onclick = () => equipItem(character, itemName);
                 entryDiv.appendChild(equipBtn);
                 inventoryContainer.appendChild(entryDiv);
+            } else if (item.type === 'consume' && (item.effect === 'stat_boost' || item.effect === 'stat_boost_all')) {
+                const useBtn = document.createElement('button');
+                useBtn.textContent = '使う';
+                useBtn.onclick = () => useConsumable(character, itemName);
+                entryDiv.appendChild(useBtn);
+                consumablesContainer.appendChild(entryDiv);
             }
         }
 
@@ -1986,17 +2087,24 @@ document.addEventListener('DOMContentLoaded', () => {
                         skillWindow.innerHTML = '<button class="back-to-command">戻る</button>';
                         actor.skills.forEach(skillName => {
                             const skill = SKILL_MASTER_DATA[skillName];
+                            if (!skill) return;
+
+                            const skillEntry = document.createElement('div');
+                            skillEntry.className = 'item-list-entry'; // Reuse style
+                            skillEntry.style.flexWrap = 'wrap';
+
+                            const detailsDiv = document.createElement('div');
+                            detailsDiv.style.flexGrow = '1';
+                            detailsDiv.innerHTML = `
+                                <span style="word-break: break-all;">${skill.name} (消費MP: ${skill.mp})</span>
+                                <div class="skill-desc" style="font-size: 12px; opacity: 0.8; margin-top: 4px; word-break: break-all;">${skill.desc}</div>
+                            `;
+
                             const btn = document.createElement('button');
-                            btn.textContent = `${skill.name} (MP:${skill.mp})`;
+                            btn.textContent = '使う';
                             btn.disabled = actor.mp < skill.mp;
-                            // テキストがボタンからはみ出ないようにスタイルを調整
-                            btn.style.whiteSpace = 'normal';
-                            btn.style.wordBreak = 'break-word';
-                            btn.style.height = 'auto';
-                            btn.style.minHeight = '40px'; // 元のボタンの高さに近い値
                             btn.onclick = () => {
                                 gameState.battle.action = { type: 'skill', actor, skill };
-                                // スキルのターゲットタイプに応じて処理を分岐
                                 if (skill.target === 'single_enemy' || skill.target === 'double_attack') {
                                     if (validEnemies.length === 1) {
                                         gameState.battle.action.target = validEnemies[0];
@@ -2004,16 +2112,17 @@ document.addEventListener('DOMContentLoaded', () => {
                                     } else {
                                         promptForTarget('enemy');
                                     }
-                                } else if (skill.target.includes('all')) {
+                                } else if (skill.target.includes('all') || skill.target === 'self') {
+                                    gameState.battle.action.target = skill.target === 'self' ? actor : null;
                                     executeTurn();
-                                } else if (skill.target === 'self') {
-                                    gameState.battle.action.target = actor;
-                                    executeTurn();
-                                } else { // single_ally など
+                                } else {
                                     promptForTarget('ally');
                                 }
                             };
-                            skillWindow.insertBefore(btn, skillWindow.firstChild);
+
+                            skillEntry.appendChild(detailsDiv);
+                            skillEntry.appendChild(btn);
+                            skillWindow.insertBefore(skillEntry, skillWindow.firstChild);
                         });
                         showBattleCommandUI('skill');
                         break;
