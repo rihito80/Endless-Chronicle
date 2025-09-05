@@ -555,6 +555,27 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function triggerAnimation(element, animationClass) {
+        if (!element) return;
+        element.classList.add(animationClass);
+        setTimeout(() => {
+            element.classList.remove(animationClass);
+        }, 500); // Duration should be synced with CSS animation duration
+    }
+
+    function getUnitElement(unit) {
+        if (!unit) return null;
+        if (unit.job) { // It's a player character
+            return document.querySelector(`#party-status-battle .party-member[data-id="${unit.id}"]`);
+        } else { // It's a monster
+            const index = gameState.battle.monsters.findIndex(m => m.id === unit.id);
+            if (index > -1) {
+                return document.querySelector(`#monster-area .monster-info[data-index="${index}"]`);
+            }
+        }
+        return null;
+    }
+
     function updateBattleUI() {
         document.getElementById('dungeon-floor-tracker').textContent = `地下 ${gameState.dungeon.currentFloor}階`;
         const monsterArea = document.getElementById('monster-area');
@@ -878,6 +899,8 @@ document.addEventListener('DOMContentLoaded', () => {
             switch(action.type) {
                 case 'attack': {
                     const target = targets[0];
+                    triggerAnimation(getUnitElement(actor), 'animate-attack');
+                    triggerAnimation(getUnitElement(target), 'animate-shake');
                     const pDamage = calculatePhysicalDamage(actor, target);
                     target.hp = Math.max(0, target.hp - pDamage);
                     message = `${actor.name} の攻撃！ ${target.name} に ${pDamage} のダメージ！`;
@@ -929,12 +952,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else {
                         // 通常のスキル処理
                         targets.forEach(target => {
-                            if(action.skill.type === 'heal') {
+                            if (action.skill.type === 'heal') {
                                 const heal = calculateHealAmount(actor, action.skill);
                                 target.hp = Math.min(getTotalStats(target).maxHp, target.hp + heal);
                                 message += ` ${target.name}のHPが${heal}回復。`;
                                 className = 'log-heal';
+                            } else if (action.skill.type === 'support') {
+                                // Support skills don't do direct damage/healing. Their effects are applied below.
+                                className = 'log-info';
                             } else { // Attack skills
+                                triggerAnimation(getUnitElement(actor), 'animate-attack');
+                                triggerAnimation(getUnitElement(target), 'animate-shake');
                                 let damageResult;
                                 if (action.skill.type === 'physical_attack') {
                                     damageResult = { damage: Math.round(calculatePhysicalDamage(actor, target) * action.skill.power), multiplier: ELEMENT_RELATIONSHIPS.NORMAL };
