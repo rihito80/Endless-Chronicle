@@ -65,59 +65,59 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("getTotalStats was called with an invalid character:", character);
             return { str: 0, vit: 0, int: 0, mnd: 0, agi: 0, luk: 0, maxHp: 0, maxMp: 0 };
         }
-        const total = { ...character.stats };
 
-        // 1. 永続ボーナス (転生)
+        // 1. ベースステータスと永続ボーナス（加算）
+        const baseStats = { ...character.stats };
         for (const stat in character.permanentBonus) {
-            total[stat] = (total[stat] || 0) + character.permanentBonus[stat];
+            baseStats[stat] = (baseStats[stat] || 0) + character.permanentBonus[stat];
         }
+        baseStats.maxHp = (character.maxHp || 0) + (character.permanentBonus?.hp || 0);
+        baseStats.maxMp = (character.maxMp || 0) + (character.permanentBonus?.mp || 0);
 
-        // 2. スキルツリーによるボーナス
+
+        // 2. 乗算ボーナスのための乗数を初期化
+        const multipliers = {
+            str: 1.0, vit: 1.0, int: 1.0, mnd: 1.0, agi: 1.0, luk: 1.0, maxHp: 1.0, maxMp: 1.0
+        };
+
+        // 3. スキルツリーによる乗算ボーナス
         const jobSkillTree = SKILL_TREE_DATA[character.job] || {};
         if (character.learnedSkillTreeNodes) {
             character.learnedSkillTreeNodes.forEach(nodeKey => {
                 const node = jobSkillTree[nodeKey];
                 if (node && node.type === 'STAT_BOOST') {
-                    total[node.stat] = (total[node.stat] || 0) + node.value;
+                    multipliers[node.stat] = (multipliers[node.stat] || 1.0) + node.value;
                 }
             });
         }
 
-
-        // 3. 装備によるボーナス
-        for (const slot in character.equipment) {
-            const itemName = character.equipment[slot];
-            if (itemName) {
-                const item = ITEM_MASTER_DATA[itemName];
-                if (item.stats) {
-                    for (const stat in item.stats) {
-                        total[stat] = (total[stat] || 0) + item.stats[stat];
-                    }
-                }
-            }
-        }
-
-        // 4. 種族によるボーナス
+        // 4. 種族による乗算ボーナス
         const race = RACE_MASTER_DATA[character.race];
         if (race && race.stats) {
             for (const stat in race.stats) {
-                total[stat] = (total[stat] || 0) + race.stats[stat];
+                multipliers[stat] = (multipliers[stat] || 1.0) + race.stats[stat];
             }
         }
 
-        // 5. 特性によるボーナス
+        // 5. 特性による乗算ボーナス
         if (character.traits) {
             character.traits.forEach(traitKey => {
                 const trait = TRAIT_MASTER_DATA[traitKey];
                 if (trait && trait.stats) {
                     for (const stat in trait.stats) {
-                        total[stat] = (total[stat] || 0) + trait.stats[stat];
+                        multipliers[stat] = (multipliers[stat] || 1.0) + trait.stats[stat];
                     }
                 }
             });
         }
 
-        // 6. バフ・デバフによるボーナス
+        // 6. 最終ステータスを計算 (ベース * 乗数)
+        const total = {};
+        for(const stat in baseStats) {
+            total[stat] = Math.round(baseStats[stat] * (multipliers[stat] || 1.0));
+        }
+
+        // 7. バフ・デバフによるボーナス (最終値に乗算)
         if (character.buffs) {
             character.buffs.forEach(buffInstance => {
                 const buffData = BUFF_DEBUFF_MASTER_DATA[buffInstance.id];
@@ -127,8 +127,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        total.maxHp = (character.maxHp || 0) + (character.permanentBonus?.hp || 0);
-        total.maxMp = (character.maxMp || 0) + (character.permanentBonus?.mp || 0);
         return total;
     }
 
@@ -856,6 +854,14 @@ document.addEventListener('DOMContentLoaded', () => {
                              // This case should not happen if item data is correct
                              message += ' しかし、何も起こらなかった。';
                         }
+                        className = 'log-levelup';
+                    } else if (item.effect === 'stat_boost_all') {
+                        item.stats.forEach(boost => {
+                            if (target.permanentBonus.hasOwnProperty(boost.stat)) {
+                                target.permanentBonus[boost.stat] += boost.value;
+                            }
+                        });
+                        message += ` ${target.name}の全ての能力が上がった！`;
                         className = 'log-levelup';
                     } else if (item.effect === 'cure_poison') {
                         const poison = target.statusAilments.find(a => a.type === STATUS_AILMENTS.POISON.id);
