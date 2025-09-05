@@ -21,6 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
         dungeon: null,
         gachaRecruit: null,
         emblems: {},
+        expeditions: {},
+        lastHubVisit: null,
     };
 
     function resetGameState() {
@@ -344,7 +346,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getActivePartyMembers() {
-        return gameState.party.map(id => gameState.roster.find(char => char.id === id));
+        // Filter out characters who are on an expedition
+        return gameState.party
+            .map(id => gameState.roster.find(char => char.id === id))
+            .filter(char => char && !gameState.expeditions[char.id]);
     }
 
     function healAllCharacters() {
@@ -542,15 +547,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateHubUI() {
+        updateExpeditionsUI(); // Update expedition status
         const container = document.getElementById('party-status-hub');
         container.innerHTML = '<h3>戦闘メンバー (クリックで詳細)</h3>';
         getActivePartyMembers().forEach(p => {
             const pStats = getTotalStats(p);
+            const hpPercent = pStats.maxHp > 0 ? (p.hp / pStats.maxHp) * 100 : 0;
+            const mpPercent = pStats.maxMp > 0 ? (p.mp / pStats.maxMp) * 100 : 0;
+
             const memberDiv = document.createElement('div');
             memberDiv.className = 'party-member';
             memberDiv.innerHTML = `
-                <strong>${p.name}</strong> (${p.job} Lv.${p.level}) |
-                ❤️ HP: ${p.hp}/${pStats.maxHp} | 💧 MP: ${p.mp}/${pStats.maxMp}
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                    <strong>${p.name}</strong>
+                    <span>${p.job} Lv.${p.level}</span>
+                </div>
+                <div class="stat-bar-container">
+                    <div class="stat-bar-fill hp-bar-fill" style="width: ${hpPercent}%;"></div>
+                    <div class="stat-bar-text">HP: ${p.hp} / ${pStats.maxHp}</div>
+                </div>
+                <div class="stat-bar-container">
+                    <div class="stat-bar-fill mp-bar-fill" style="width: ${mpPercent}%;"></div>
+                    <div class="stat-bar-text">MP: ${p.mp} / ${pStats.maxMp}</div>
+                </div>
             `;
             memberDiv.onclick = () => openCharacterDetailScreen(p.id);
             container.appendChild(memberDiv);
@@ -568,6 +587,75 @@ document.addEventListener('DOMContentLoaded', () => {
     function getUnitElement(unit) {
         if (!unit || !gameState.battle) return null;
         return gameState.battle.unitElements.get(unit.id) || null;
+    }
+
+    function calculateExpeditionRewards(character, elapsedTimeInSeconds) {
+        const stats = getTotalStats(character);
+        // Gold per minute = (Level * (STR + INT) / 10)
+        const goldPerMinute = (stats.level * (stats.str + stats.int)) / 10;
+        const elapsedMinutes = elapsedTimeInSeconds / 60;
+        return Math.floor(goldPerMinute * elapsedMinutes);
+    }
+
+    function claimExpeditionRewards(characterId) {
+        const expedition = gameState.expeditions[characterId];
+        if (!expedition) return;
+
+        const character = gameState.roster.find(c => c.id === characterId);
+        if (!character) return;
+
+        const elapsedTime = Math.min(Date.now() - expedition.startTime, expedition.duration);
+        const goldEarned = calculateExpeditionRewards(character, elapsedTime / 1000);
+
+        gameState.gold += goldEarned;
+        delete gameState.expeditions[characterId];
+
+        logMessage(`${character.name} が遠征から帰還し、${goldEarned}G を獲得した！`, 'hub', { className: 'log-item' });
+        updateHubUI();
+    }
+
+    function updateExpeditionsUI() {
+        const container = document.getElementById('expedition-status-container');
+        container.innerHTML = '<h3>遠征中の仲間</h3>';
+
+        if (Object.keys(gameState.expeditions).length === 0) {
+            container.innerHTML += '<p>現在、遠征中の仲間はいません。</p>';
+            return;
+        }
+
+        for (const charId in gameState.expeditions) {
+            const expedition = gameState.expeditions[charId];
+            const character = gameState.roster.find(c => c.id === charId);
+            if (!character) continue;
+
+            const now = Date.now();
+            const elapsedTime = now - expedition.startTime;
+            const progressPercent = Math.min((elapsedTime / expedition.duration) * 100, 100);
+            const isComplete = elapsedTime >= expedition.duration;
+
+            const goldSoFar = calculateExpeditionRewards(character, elapsedTime / 1000);
+
+            const expeditionDiv = document.createElement('div');
+            expeditionDiv.className = 'character-card'; // Reuse style
+            expeditionDiv.innerHTML = `
+                <div style="flex-grow: 1;">
+                    <strong>${character.name}</strong> (Lv.${character.level})
+                    <div class="stat-bar-container" title="${isComplete ? '完了' : '遠征中'}">
+                        <div class="stat-bar-fill" style="width: ${progressPercent}%; background-color: #ffc107;"></div>
+                        <div class="stat-bar-text">${isComplete ? '完了！' : `${Math.floor(progressPercent)}%`}</div>
+                    </div>
+                    <div style="font-size: 12px; margin-top: 4px;">獲得ゴールド: 💰 ${goldSoFar.toLocaleString()} G</div>
+                </div>
+                <button class="claim-expedition-btn" data-id="${charId}" ${!isComplete ? 'disabled' : ''}>
+                    ${isComplete ? '報酬を受け取る' : '遠征中'}
+                </button>
+            `;
+            container.appendChild(expeditionDiv);
+        }
+
+        document.querySelectorAll('.claim-expedition-btn').forEach(btn => {
+            btn.onclick = () => claimExpeditionRewards(btn.dataset.id);
+        });
     }
 
     function updateBattleUI() {
@@ -611,6 +699,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const pStats = getTotalStats(p);
             let statusIcons = p.statusAilments.map(s => STATUS_AILMENTS[s.type.toUpperCase()]?.icon || '').join('');
             let buffIcons = p.buffs.map(b => BUFF_DEBUFF_MASTER_DATA[b.id]?.icon || '').join('');
+            const hpPercent = pStats.maxHp > 0 ? (p.hp / pStats.maxHp) * 100 : 0;
+            const mpPercent = pStats.maxMp > 0 ? (p.mp / pStats.maxMp) * 100 : 0;
 
             const partyMemberDiv = document.createElement('div');
             partyMemberDiv.className = 'party-member';
@@ -620,8 +710,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             partyMemberDiv.innerHTML = `
-                 <strong>${p.name} ${statusIcons}${buffIcons}</strong> (Lv.${p.level})<br>
-                 ❤️ HP: ${p.hp}/${pStats.maxHp} | 💧 MP: ${p.mp}/${pStats.maxMp}
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                    <strong>${p.name} ${statusIcons}${buffIcons}</strong>
+                    <span>Lv.${p.level}</span>
+                </div>
+                <div class="stat-bar-container">
+                    <div class="stat-bar-fill hp-bar-fill" style="width: ${hpPercent}%;"></div>
+                    <div class="stat-bar-text">HP: ${p.hp} / ${pStats.maxHp}</div>
+                </div>
+                <div class="stat-bar-container">
+                    <div class="stat-bar-fill mp-bar-fill" style="width: ${mpPercent}%;"></div>
+                    <div class="stat-bar-text">MP: ${p.mp} / ${pStats.maxMp}</div>
+                </div>
             `;
 
             partyStatus.appendChild(partyMemberDiv);
@@ -1067,8 +1167,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const resultText = document.getElementById('result-text');
         const nextBattleBtn = document.getElementById('next-battle-btn');
         const resultExpBarsContainer = document.getElementById('result-exp-bars');
+        const dungeonClearMsg = document.getElementById('dungeon-clear-message');
+
+        // Reset elements
         resultText.innerHTML = '';
         resultExpBarsContainer.innerHTML = '';
+        dungeonClearMsg.classList.add('hidden');
+        dungeonClearMsg.classList.remove('animate');
+        dungeonClearMsg.textContent = '';
+
 
         if (isWin) {
             resultText.innerHTML += `<p class="log-win">勝利！</p>`;
@@ -1183,6 +1290,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 nextBattleBtn.textContent = '次の戦闘へ';
             } else {
                 nextBattleBtn.textContent = 'もう一度挑戦する';
+                // Show fancy "Dungeon Cleared" message
+                const dungeonClearMsg = document.getElementById('dungeon-clear-message');
+                dungeonClearMsg.textContent = 'ダンジョン踏破';
+                dungeonClearMsg.classList.remove('hidden');
+                dungeonClearMsg.classList.add('animate');
+
                 resultText.innerHTML += `<br><p class="log-win"><strong>${gameState.dungeon.name} を踏破した！</strong></p>`;
             }
         } else {
@@ -1223,6 +1336,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 // --- Data Migration Logic ---
             if (!gameState.emblems) {
                 gameState.emblems = {};
+            }
+            if (!gameState.expeditions) {
+                gameState.expeditions = {};
+            }
+            if (!gameState.lastHubVisit) {
+                gameState.lastHubVisit = null;
             }
                 // Add new properties to characters if they don't exist in the save file.
                 gameState.roster.forEach(char => {
@@ -1383,9 +1502,17 @@ document.addEventListener('DOMContentLoaded', () => {
         <p><strong>種族:</strong> ${race.name} | <strong>特性:</strong> ${traits}</p>`;
 
         const statsContainer = document.getElementById('char-detail-stats');
+        const hpPercent = stats.maxHp > 0 ? (character.hp / stats.maxHp) * 100 : 0;
+        const mpPercent = stats.maxMp > 0 ? (character.mp / stats.maxMp) * 100 : 0;
         statsContainer.innerHTML = `
-            <span>❤️ HP: ${character.hp} / ${stats.maxHp}</span>
-            <span>💧 MP: ${character.mp} / ${stats.maxMp}</span>
+            <div class="stat-bar-container" style="grid-column: 1 / -1; height: 22px;">
+                <div class="stat-bar-fill hp-bar-fill" style="width: ${hpPercent}%;"></div>
+                <div class="stat-bar-text" style="font-size: 12px; line-height: 20px;">HP: ${character.hp} / ${stats.maxHp}</div>
+            </div>
+            <div class="stat-bar-container" style="grid-column: 1 / -1; height: 22px;">
+                <div class="stat-bar-fill mp-bar-fill" style="width: ${mpPercent}%;"></div>
+                <div class="stat-bar-text" style="font-size: 12px; line-height: 20px;">MP: ${character.mp} / ${stats.maxMp}</div>
+            </div>
             <span>⚔️ STR: ${stats.str}</span><span>🛡️ VIT: ${stats.vit}</span>
             <span>🧙 INT: ${stats.int}</span><span>🙏 MND: ${stats.mnd}</span>
             <span>🏃 AGI: ${stats.agi}</span><span>🍀 LUK: ${stats.luk}</span>
@@ -1596,6 +1723,31 @@ document.addEventListener('DOMContentLoaded', () => {
         showScreen('gacha-recruit-screen');
     }
 
+    function startExpedition(characterId, durationHours) {
+        if (gameState.expeditions[characterId]) {
+            alert('このキャラクターは既に遠征中です。');
+            return;
+        }
+        gameState.expeditions[characterId] = {
+            startTime: Date.now(),
+            duration: durationHours * 60 * 60 * 1000, // convert hours to ms
+        };
+        logMessage(`${gameState.roster.find(c => c.id === characterId).name} が ${durationHours} 時間の遠征に出発した。`, 'hub', { className: 'log-info' });
+        openPartyManagementScreen(); // Refresh the screen
+    }
+
+    function promptForExpedition(character) {
+        const duration = prompt(`${character.name} を何時間、遠征に行かせますか？ (最大8時間)`);
+        if (duration) {
+            const durationHours = parseInt(duration, 10);
+            if (!isNaN(durationHours) && durationHours > 0 && durationHours <= 8) {
+                startExpedition(character.id, durationHours);
+            } else {
+                alert('無効な時間です。1から8の間で入力してください。');
+            }
+        }
+    }
+
     function openPartyManagementScreen() {
         const activeList = document.getElementById('active-party-list');
         const reserveList = document.getElementById('reserve-members-list');
@@ -1604,9 +1756,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const activeMembers = getActivePartyMembers();
         gameState.roster.forEach(char => {
+            const isExpedition = gameState.expeditions[char.id];
             const card = document.createElement('div');
             card.className = 'character-card';
-            card.innerHTML = `<span>${char.name} (${char.job} Lv.${char.level})</span>`;
+            card.style.opacity = isExpedition ? 0.6 : 1;
+            card.innerHTML = `<span>${char.name} (${char.job} Lv.${char.level}) ${isExpedition ? ' (遠征中)' : ''}</span>`;
 
             const buttonContainer = document.createElement('div');
             buttonContainer.className = 'character-card-buttons';
@@ -1620,13 +1774,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
             } else {
                 moveBtn.textContent = 'メンバーに入れる';
-                moveBtn.disabled = activeMembers.length >= 4;
+                moveBtn.disabled = activeMembers.length >= 4 || isExpedition;
                 moveBtn.onclick = () => {
                     gameState.party.push(char.id);
                     openPartyManagementScreen();
                 };
             }
             buttonContainer.appendChild(moveBtn);
+
+            // Add expedition button only for reserve members not on expedition
+            if (!activeMembers.includes(char) && !isExpedition) {
+                const expeditionBtn = document.createElement('button');
+                expeditionBtn.textContent = '遠征';
+                expeditionBtn.onclick = () => promptForExpedition(char);
+                buttonContainer.appendChild(expeditionBtn);
+            }
 
             const deleteBtn = document.createElement('button');
             deleteBtn.textContent = '消去';
