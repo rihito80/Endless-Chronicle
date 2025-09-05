@@ -282,3 +282,24 @@ input, select {
     margin-top: 0;
     text-align: center;
 }
+
+/* Battle Animations */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+@keyframes attack-lunge {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(-15px, 0) scale(1.05); }
+  100% { transform: translate(0, 0); }
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+.animate-attack {
+  animation: attack-lunge 0.3s ease-in-out;
+}
