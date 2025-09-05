@@ -1,13 +1,13 @@
 const SKILL_MASTER_DATA = {
     'スラッシュ': { name: 'スラッシュ', mp: 5, type: 'physical_attack', power: 1.2, target: 'single_enemy', desc: '敵単体に物理ダメージ' },
-    'ファイアボール': { name: 'ファイアボール', mp: 8, type: 'magical_attack', power: 1.0, target: 'single_enemy', element: ELEMENTS.FIRE, desc: '敵単体に火属性の魔法ダメージ' },
+    'ファイアボール': { name: 'ファイアボール', mp: 8, type: 'magical_attack', power: 1.2, target: 'single_enemy', element: ELEMENTS.FIRE, desc: '敵単体に火属性の魔法ダメージ' },
     'ヒール': { name: 'ヒール', mp: 10, type: 'heal', power: 1.0, target: 'single_ally', desc: '味方単体のHPを回復' },
     'パワースマッシュ': { name: 'パワースマッシュ', mp: 10, type: 'physical_attack', power: 1.8, target: 'single_enemy', desc: '敵単体に物理大ダメージ' },
     'エリアヒール': { name: 'エリアヒール', mp: 25, type: 'heal', power: 0.8, target: 'all_allies', desc: '味方全体のHPを回復' },
     'サンダー': { name: 'サンダー', mp: 15, type: 'magical_attack', power: 1.5, target: 'single_enemy', element: ELEMENTS.THUNDER, desc: '敵単体に雷属性の魔法ダメージ' },
     'スティール': { name: 'スティール', mp: 2, type: 'support', power: 0, target: 'single_enemy', desc: '敵単体からアイテムを盗む(未実装)' },
     'ダブルショット': { name: 'ダブルショット', mp: 12, type: 'physical_attack', power: 0.8, target: 'double_attack', desc: '敵単体に2回物理ダメージ' },
-    'ポイズンアロー': { name: 'ポイズンアロー', mp: 8, type: 'physical_attack', power: 1.0, target: 'single_enemy', inflicts: [{ type: STATUS_AILMENTS.POISON.id, chance: 0.7, turns: 3 }], desc: '敵単体を確率で毒状態にする' },
+    'ポイズンアロー': { name: 'ポイズンアロー', mp: 8, type: 'physical_attack', power: 1.1, target: 'single_enemy', inflicts: [{ type: STATUS_AILMENTS.POISON.id, chance: 0.7, turns: 3 }], desc: '敵単体を確率で毒状態にする' },
     'ファストステップ': { name: 'ファストステップ', mp: 8, type: 'support', power: 1.2, target: 'self', desc: '自身のAGIを上昇させる(未実装)' },
 
     // 新規追加スキル
@@ -15,8 +15,13 @@ const SKILL_MASTER_DATA = {
     'サンダーボルト': { name: 'サンダーボルト', mp: 22, type: 'magical_attack', power: 0.7, target: 'all_enemies', element: ELEMENTS.THUNDER, desc: '敵全体に雷属性のダメージ' },
     'ホーリーライト': { name: 'ホーリーライト', mp: 18, type: 'magical_attack', power: 1.8, target: 'single_enemy', element: ELEMENTS.HOLY, desc: '敵単体に聖属性の大ダメージ' },
     'ベノムエッジ': { name: 'ベノムエッジ', mp: 10, type: 'physical_attack', power: 1.1, target: 'single_enemy', inflicts: [{ type: STATUS_AILMENTS.POISON.id, chance: 0.9, turns: 4 }], desc: '敵単体を高確率で毒状態にする' },
-    'パラライズショット': { name: 'パラライズショット', mp: 12, type: 'physical_attack', power: 0.9, target: 'single_enemy', inflicts: [{ type: STATUS_AILMENTS.PARALYSIS.id, chance: 0.4, turns: 2 }], desc: '敵単体を確率で麻痺させる' },
-    'サイレンスブレード': { name: 'サイレンスブレード', mp: 10, type: 'physical_attack', power: 1.0, target: 'single_enemy', inflicts: [{ type: STATUS_AILMENTS.SILENCE.id, chance: 0.5, turns: 3 }], desc: '敵単体を確率で沈黙させる' },
+    'パラライズショット': { name: 'パラライズショット', mp: 12, type: 'physical_attack', power: 1.0, target: 'single_enemy', inflicts: [{ type: STATUS_AILMENTS.PARALYSIS.id, chance: 0.4, turns: 2 }], desc: '敵単体を確率で麻痺させる' },
+    'サイレンスブレード': { name: 'サイレンスブレード', mp: 10, type: 'physical_attack', power: 1.1, target: 'single_enemy', inflicts: [{ type: STATUS_AILMENTS.SILENCE.id, chance: 0.5, turns: 3 }], desc: '敵単体を確率で沈黙させる' },
+
+    // Paladin and Sage skills
+    'シールドバッシュ': { name: 'シールドバッシュ', mp: 15, type: 'physical_attack', power: 1.2, target: 'single_enemy', inflicts: [{ type: STATUS_AILMENTS.STUN.id, chance: 0.3, turns: 1 }], desc: '敵単体に物理ダメージを与え、確率で気絶させる' },
+    'メガヒール': { name: 'メガヒール', mp: 20, type: 'heal', power: 2.5, target: 'single_ally', desc: '味方単体のHPを大きく回復' },
+    'ジャッジメント': { name: 'ジャッジメント', mp: 30, type: 'magical_attack', power: 2.5, target: 'single_enemy', element: ELEMENTS.HOLY, desc: '敵単体に聖属性の特大魔法ダメージ' },
 };
 
 const SKILL_TREE_DATA = {
@@ -54,5 +59,17 @@ const SKILL_TREE_DATA = {
         'ポイズンアロー': { type: 'SKILL', skillName: 'ポイズンアロー', cost: 3, requiredLevel: 7 },
         'パラライズショット': { type: 'SKILL', skillName: 'パラライズショット', cost: 3, requiredLevel: 13 },
         'LUK+15': { type: 'STAT_BOOST', stat: 'luk', value: 15, cost: 4, requiredLevel: 18 },
+    },
+    'パラディン': {
+        'VIT+10': { type: 'STAT_BOOST', stat: 'vit', value: 10, cost: 2, requiredLevel: 5 },
+        'ヒール': { type: 'SKILL', skillName: 'ヒール', cost: 2, requiredLevel: 8 },
+        'STR+10': { type: 'STAT_BOOST', stat: 'str', value: 10, cost: 3, requiredLevel: 15 },
+        'HP+50': { type: 'STAT_BOOST', stat: 'maxHp', value: 50, cost: 4, requiredLevel: 25 },
+    },
+    '賢者': {
+        'INT+10': { type: 'STAT_BOOST', stat: 'int', value: 10, cost: 2, requiredLevel: 5 },
+        'エリアヒール': { type: 'SKILL', skillName: 'エリアヒール', cost: 3, requiredLevel: 12 },
+        'MP+50': { type: 'STAT_BOOST', stat: 'maxMp', value: 50, cost: 3, requiredLevel: 18 },
+        'ジャッジメント': { type: 'SKILL', skillName: 'ジャッジメント', cost: 4, requiredLevel: 25 },
     }
 };

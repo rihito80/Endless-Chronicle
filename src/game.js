@@ -613,10 +613,11 @@ document.addEventListener('DOMContentLoaded', () => {
         gameState.battle.activeCharacter = active;
         updateBattleUI();
 
-        // Status Ailment Check (Paralysis)
-        const isParalyzed = active.statusAilments.find(s => s.type === STATUS_AILMENTS.PARALYSIS.id);
-        if (isParalyzed && Math.random() < 0.5) {
-            logMessage(`${active.name}は体が痺れて動けない！`, 'battle', { className: 'log-info' });
+        // Status Ailment Check (Paralysis, Stun)
+        const isImmobilized = active.statusAilments.find(s => s.type === STATUS_AILMENTS.PARALYSIS.id || s.type === STATUS_AILMENTS.STUN.id);
+        if (isImmobilized && Math.random() < 0.5) { // 50% chance to be immobilized
+            const ailmentName = Object.values(STATUS_AILMENTS).find(a => a.id === isImmobilized.type)?.name || '状態異常';
+            logMessage(`${active.name}は${ailmentName}で動けない！`, 'battle', { className: 'log-info' });
             setTimeout(() => {
                  applyEndOfTurnStatusEffects(active);
                  gameState.battle.turnIndex = (gameState.battle.turnIndex + 1) % gameState.battle.turnOrder.length;
@@ -664,45 +665,66 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'skill':
                     actor.mp -= action.skill.mp;
                     message = `${actor.name} は ${action.skill.name} を使った！`;
-                    targets.forEach(target => {
-                        if(action.skill.type === 'heal') {
-                            const heal = calculateHealAmount(actor, action.skill);
-                            target.hp = Math.min(getTotalStats(target).maxHp, target.hp + heal);
-                            message += ` ${target.name}のHPが${heal}回復。`;
-                            className = 'log-heal';
-                        } else { // Attack skills
-                            let damageResult;
-                            if (action.skill.type === 'physical_attack') {
-                                damageResult = { damage: Math.round(calculatePhysicalDamage(actor, target) * action.skill.power), multiplier: ELEMENT_RELATIONSHIPS.NORMAL };
-                            } else {
-                                damageResult = calculateMagicalDamage(actor, target, action.skill);
-                            }
 
-                            target.hp = Math.max(0, target.hp - damageResult.damage);
-                            message += ` ${target.name}に${damageResult.damage}のダメージ！`;
-
-                            if (damageResult.multiplier === ELEMENT_RELATIONSHIPS.WEAK) {
-                                message += ' <span class="log-critical">効果は抜群だ！</span>';
-                            } else if (damageResult.multiplier === ELEMENT_RELATIONSHIPS.RESIST) {
-                                message += ' <span class="log-resist">あまり効いていない...</span>';
+                    // 2回攻撃スキルの特別処理
+                    if (action.skill.target === 'double_attack') {
+                        const target = targets[0];
+                        if (target) {
+                            for (let i = 0; i < 2; i++) {
+                                if (target.hp > 0) {
+                                    const damageResult = { damage: Math.round(calculatePhysicalDamage(actor, target) * action.skill.power), multiplier: ELEMENT_RELATIONSHIPS.NORMAL };
+                                    target.hp = Math.max(0, target.hp - damageResult.damage);
+                                    message += ` ${target.name}に${damageResult.damage}のダメージ！`;
+                                    if(target.hp <= 0) {
+                                        message += ` ${target.name}を倒した！`;
+                                        break; // ターゲットが倒れたら攻撃を止める
+                                    }
+                                }
                             }
                             className = 'log-damage';
                         }
-
-                        // Apply status ailments from skill
-                        if (action.skill.inflicts) {
-                            action.skill.inflicts.forEach(inflict => {
-                                if (Math.random() < inflict.chance) {
-                                    // Prevent duplicate ailments
-                                    if (!target.statusAilments.some(a => a.type === inflict.type)) {
-                                        target.statusAilments.push({ type: inflict.type, turns: inflict.turns });
-                                        const ailmentInfo = Object.values(STATUS_AILMENTS).find(a => a.id === inflict.type);
-                                        message += ` ${target.name}は${ailmentInfo.name}になった！`;
-                                    }
+                    } else {
+                        // 通常のスキル処理
+                        targets.forEach(target => {
+                            if(action.skill.type === 'heal') {
+                                const heal = calculateHealAmount(actor, action.skill);
+                                target.hp = Math.min(getTotalStats(target).maxHp, target.hp + heal);
+                                message += ` ${target.name}のHPが${heal}回復。`;
+                                className = 'log-heal';
+                            } else { // Attack skills
+                                let damageResult;
+                                if (action.skill.type === 'physical_attack') {
+                                    damageResult = { damage: Math.round(calculatePhysicalDamage(actor, target) * action.skill.power), multiplier: ELEMENT_RELATIONSHIPS.NORMAL };
+                                } else {
+                                    damageResult = calculateMagicalDamage(actor, target, action.skill);
                                 }
-                            });
-                        }
-                    });
+
+                                target.hp = Math.max(0, target.hp - damageResult.damage);
+                                message += ` ${target.name}に${damageResult.damage}のダメージ！`;
+
+                                if (damageResult.multiplier === ELEMENT_RELATIONSHIPS.WEAK) {
+                                    message += ' <span class="log-critical">効果は抜群だ！</span>';
+                                } else if (damageResult.multiplier === ELEMENT_RELATIONSHIPS.RESIST) {
+                                    message += ' <span class="log-resist">あまり効いていない...</span>';
+                                }
+                                className = 'log-damage';
+                            }
+
+                            // Apply status ailments from skill
+                            if (action.skill.inflicts) {
+                                action.skill.inflicts.forEach(inflict => {
+                                    if (Math.random() < inflict.chance) {
+                                        // Prevent duplicate ailments
+                                        if (!target.statusAilments.some(a => a.type === inflict.type)) {
+                                            target.statusAilments.push({ type: inflict.type, turns: inflict.turns });
+                                            const ailmentInfo = Object.values(STATUS_AILMENTS).find(a => a.id === inflict.type);
+                                            message += ` ${target.name}は${ailmentInfo.name}になった！`;
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    }
                     break;
                 case 'item':
                     const item = action.item;
@@ -1357,6 +1379,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // ========================================================================
 
     function initEventListeners() {
+        // Populate job dropdown
+        const jobSelect = document.getElementById('char-job');
+        jobSelect.innerHTML = ''; // Clear existing options
+        for (const jobName in JOB_MASTER_DATA) {
+            const option = document.createElement('option');
+            option.value = jobName;
+            option.textContent = jobName;
+            jobSelect.appendChild(option);
+        }
+
         // バトルコマンドUIが正しく隠れるように、起動時にクラスを追加する
         document.getElementById('command-window').classList.add('sub-window');
 

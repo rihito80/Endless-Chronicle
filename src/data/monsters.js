@@ -8,4 +8,5 @@ const MONSTER_MASTER_DATA = {
     'メイジ': { name: 'メイジ', rarity: 'UNCOMMON', race: 'HUMAN', traits: ['GENIUS'], hp: 70, str: 15, vit: 18, int: 30, mnd: 25, agi: 18, exp: 45, drops: [{ itemName: 'まどうしのローブ', chance: 0.15 }], statVariance: 0.1 },
     'ゴーレム': { name: 'ゴーレム', rarity: 'RARE', race: 'DWARF', traits: ['STUBBORN'], hp: 200, str: 45, vit: 50, int: 5, mnd: 20, agi: 5, exp: 80, drops: [{ itemName: 'てつのたて', chance: 0.4 }, { itemName: 'ちからの指輪', chance: 0.05 }], statVariance: 0.05, elementalResistances: [ELEMENTS.FIRE, ELEMENTS.ICE, ELEMENTS.THUNDER] },
     'ワイバーン': { name: 'ワイバーン', rarity: 'RARE', race: 'BEASTMAN', traits: ['QUICK'], hp: 350, str: 60, vit: 40, int: 25, mnd: 30, agi: 50, exp: 200, drops: [{ itemName: 'エリクサー', chance: 0.1 }], statVariance: 0.2, elementalWeaknesses: [ELEMENTS.THUNDER] },
+    'ドラゴン': { name: 'ドラゴン', rarity: 'EPIC', race: 'DRAGONKIN', traits: ['GENIUS'], hp: 800, str: 80, vit: 60, int: 50, mnd: 50, agi: 40, exp: 1000, drops: [{ itemName: '賢者の石', chance: 0.1 }], statVariance: 0.1, elementalResistances: [ELEMENTS.FIRE] },
 };

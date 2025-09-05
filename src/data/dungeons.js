@@ -48,4 +48,27 @@ const DUNGEON_MASTER_DATA = {
             ]
         }
     },
+    '古代の遺跡': {
+        name: '古代の遺跡', depth: 15,
+        encounterGroups: {
+            '1-5': [
+                { monsters: ['リザードマン', 'メイジ'], weight: 4 },
+                { monsters: ['ゴーレム'], weight: 5 },
+                { monsters: ['ゴーレム', 'メイジ'], weight: 2 },
+            ],
+            '6-10': [
+                { monsters: ['ゴーレム', 'ゴーレム'], weight: 3 },
+                { monsters: ['ワイバーン'], weight: 5 },
+                { monsters: ['ワイバーン', 'メイジ'], weight: 3 },
+            ],
+            '11-14': [
+                { monsters: ['ワイバーン', 'リザードマン'], weight: 4 },
+                { monsters: ['ゴーレム', 'ワイバーン'], weight: 4 },
+                { monsters: ['ワイバーン', 'ワイバーン'], weight: 2 },
+            ],
+            '15-15': [
+                { monsters: ['ドラゴン'], weight: 1 },
+            ]
+        }
+    },
 };
