@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (character.buffs) {
             character.buffs.forEach(buffInstance => {
                 const buffData = BUFF_DEBUFF_MASTER_DATA[buffInstance.id];
-                if (buffData && buffData.stat && total[buffData.stat]) {
+                if (buffData && buffData.stat && typeof total[buffData.stat] === 'number') {
                     total[buffData.stat] = Math.round(total[buffData.stat] * buffData.modifier);
                 }
             });
@@ -350,6 +350,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalStats = getTotalStats(char);
             char.hp = totalStats.maxHp;
             char.mp = totalStats.maxMp;
+            char.statusAilments = [];
+            char.buffs = [];
         });
     }
 
@@ -1909,19 +1911,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openHelpScreen() {
-        const container = document.getElementById('help-race-info');
-        container.innerHTML = ''; // Clear previous content
+        const raceContainer = document.getElementById('help-race-info');
+        const traitContainer = document.getElementById('help-trait-info');
+        const statContainer = document.getElementById('help-stat-info');
+        raceContainer.innerHTML = '';
+        traitContainer.innerHTML = '';
+        statContainer.innerHTML = '';
 
         const statNameMap = { maxHp: '最大HP', maxMp: '最大MP', str: '力', vit: '体力', int: '知力', mnd: '精神', agi: '速さ', luk: '運' };
 
+        // Add Race Info
         for (const raceKey in RACE_MASTER_DATA) {
             const race = RACE_MASTER_DATA[raceKey];
             const raceDiv = document.createElement('div');
-            raceDiv.className = 'item-list-entry'; // Reuse existing style
+            raceDiv.className = 'item-list-entry';
             raceDiv.style.flexDirection = 'column';
             raceDiv.style.alignItems = 'flex-start';
             raceDiv.style.marginBottom = '10px';
-
 
             let statsHtml = '';
             if (race.stats && Object.keys(race.stats).length > 0) {
@@ -1939,7 +1945,45 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p style="font-size: 0.9em; margin: 4px 0;">${race.desc}</p>
                 <div style="font-size: 0.9em;">${statsHtml || '補正なし'}</div>
             `;
-            container.appendChild(raceDiv);
+            raceContainer.appendChild(raceDiv);
+        }
+
+        // Add Trait Info
+        for (const traitKey in TRAIT_MASTER_DATA) {
+            const trait = TRAIT_MASTER_DATA[traitKey];
+            const traitDiv = document.createElement('div');
+            traitDiv.className = 'item-list-entry';
+            traitDiv.style.flexDirection = 'column';
+            traitDiv.style.alignItems = 'flex-start';
+            traitDiv.style.marginBottom = '10px';
+            traitDiv.innerHTML = `
+                <strong style="font-size: 1.1em;">${trait.name}</strong>
+                <p style="font-size: 0.9em; margin: 4px 0;">${trait.desc}</p>
+            `;
+            traitContainer.appendChild(traitDiv);
+        }
+
+        // Add Stat Info
+        const statDescriptions = {
+            'HP': 'キャラクターの生命力。0になると戦闘不能になります。',
+            'MP': 'スキルを使用するために必要なポイント。',
+            'STR': '物理攻撃の威力に影響します。',
+            'VIT': '物理防御力に影響し、受けるダメージを減少させます。',
+            'INT': '魔法攻撃の威力と、一部のスキルの回復量に影響します。',
+            'MND': '魔法防御力に影響し、受ける魔法ダメージを減少させます。',
+            'AGI': '戦闘時の行動順と、回避率に影響します。',
+            'LUK': 'アイテムのドロップ率や、クリティカルヒット率など、様々な確率に影響します。'
+        };
+
+        for (const statName in statDescriptions) {
+            const desc = statDescriptions[statName];
+            const statDiv = document.createElement('div');
+            statDiv.className = 'item-list-entry';
+            statDiv.style.alignItems = 'center';
+            statDiv.style.marginBottom = '10px';
+            statDiv.innerHTML = `<strong style="font-size: 1.1em; min-width: 80px; text-align: center; margin-right: 15px;">${statName}</strong>
+                                 <p style="font-size: 0.9em; margin: 0;">${desc}</p>`;
+            statContainer.appendChild(statDiv);
         }
 
         showScreen('help-screen');
