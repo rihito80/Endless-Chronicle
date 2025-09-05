@@ -35,10 +35,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // ========================================================================
 
     function createCharacter(name, job) {
+        const raceKeys = Object.keys(RACE_MASTER_DATA);
+        const traitKeys = Object.keys(TRAIT_MASTER_DATA);
         const char = {
             id: `char${Date.now()}`, name, level: 1, exp: 0, job,
             hp: 100, maxHp: 100, mp: 10, maxMp: 10,
             stats: { str: 10, vit: 10, int: 5, mnd: 5, agi: 7, luk: 5 },
+            race: raceKeys[Math.floor(Math.random() * raceKeys.length)],
+            traits: [traitKeys[Math.floor(Math.random() * traitKeys.length)]],
             skillPoints: 0,
             skills: [...JOB_MASTER_DATA[job].skills],
             learnedSkillTreeNodes: [], // スキルツリーでの習得済みノードを記録
@@ -88,6 +92,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             }
+        }
+
+        // 4. 種族によるボーナス
+        const race = RACE_MASTER_DATA[character.race];
+        if (race && race.stats) {
+            for (const stat in race.stats) {
+                total[stat] = (total[stat] || 0) + race.stats[stat];
+            }
+        }
+
+        // 5. 特性によるボーナス
+        if (character.traits) {
+            character.traits.forEach(traitKey => {
+                const trait = TRAIT_MASTER_DATA[traitKey];
+                if (trait && trait.stats) {
+                    for (const stat in trait.stats) {
+                        total[stat] = (total[stat] || 0) + trait.stats[stat];
+                    }
+                }
+            });
         }
 
         total.maxHp = (character.maxHp || 0) + (character.permanentBonus?.hp || 0);
@@ -246,12 +270,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function getBuyPrice(item) {
+        const rarity = RARITY_MASTER_DATA[item.rarity];
+        if (!rarity) return item.buyPrice;
+        return Math.round(item.buyPrice * rarity.priceMultiplier);
+    }
+
+    function getSellPrice(item) {
+        const rarity = RARITY_MASTER_DATA[item.rarity];
+        if (!rarity) return item.sellPrice;
+        return Math.round(item.sellPrice * rarity.priceMultiplier);
+    }
+
     function buyItem(itemName) {
         const item = ITEM_MASTER_DATA[itemName];
         if (!item || !item.buyPrice) return;
+        const price = getBuyPrice(item);
 
-        if (gameState.gold >= item.buyPrice) {
-            gameState.gold -= item.buyPrice;
+        if (gameState.gold >= price) {
+            gameState.gold -= price;
             gameState.inventory[itemName] = (gameState.inventory[itemName] || 0) + 1;
             openShopScreen(); // UIを更新
         } else {
@@ -264,8 +301,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!item || !item.sellPrice || !gameState.inventory[itemName] || gameState.inventory[itemName] <= 0) {
             return;
         }
+        const price = getSellPrice(item);
 
-        gameState.gold += item.sellPrice;
+        gameState.gold += price;
         gameState.inventory[itemName]--;
 
         if (gameState.inventory[itemName] <= 0) {
@@ -294,9 +332,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 details = item.desc;
             }
 
+            const rarity = RARITY_MASTER_DATA[item.rarity];
+            const rarityInfo = rarity ? `<span style="color: ${rarity.color}; font-weight: bold;">[${rarity.name}]</span> ` : '';
+
+            const buyPrice = getBuyPrice(item);
+            const sellPrice = getSellPrice(item);
+
             const mainText = isBuying
-                ? `${item.name} (${item.buyPrice}G)`
-                : `${item.name} (x${quantity}) - 売値: ${item.sellPrice}G`;
+                ? `${rarityInfo}${item.name} (${buyPrice}G)`
+                : `${rarityInfo}${item.name} (x${quantity}) - 売値: ${sellPrice}G`;
 
             entryDiv.innerHTML = `
                 <div style="flex-grow: 1; overflow: hidden;">
@@ -308,7 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const btn = document.createElement('button');
             if (isBuying) {
                 btn.textContent = '購入';
-                btn.disabled = gameState.gold < item.buyPrice;
+                btn.disabled = gameState.gold < buyPrice;
                 btn.onclick = () => buyItem(item.name);
             } else {
                 btn.textContent = '売却';
@@ -456,11 +500,36 @@ document.addEventListener('DOMContentLoaded', () => {
         // 3. 選択されたグループのモンスターを生成
         const monsterInstances = chosenGroup.monsters.map((monsterName, index) => {
             const monsterData = JSON.parse(JSON.stringify(MONSTER_MASTER_DATA[monsterName]));
+            const variance = monsterData.statVariance || 0.1;
+            const stats = {
+                str: monsterData.str,
+                vit: monsterData.vit,
+                int: monsterData.int,
+                mnd: monsterData.mnd,
+                agi: monsterData.agi,
+                luk: monsterData.luk || 5,
+            };
+
+            for (const stat in stats) {
+                const randomFactor = 1 + (Math.random() * 2 - 1) * variance;
+                stats[stat] = Math.round(stats[stat] * randomFactor);
+            }
+
+            const isRare = Math.random() < 0.1; // 10% chance to be rare
+            if (isRare) {
+                monsterData.name = `Rare ${monsterData.name}`;
+                monsterData.exp = Math.round(monsterData.exp * 2);
+                for (const stat in stats) {
+                    stats[stat] = Math.round(stats[stat] * 1.5);
+                }
+                monsterData.hp = Math.round(monsterData.hp * 1.5);
+            }
+
             return {
                 ...monsterData,
                 id: `monster${Date.now()}${index}`,
                 maxHp: monsterData.hp,
-                stats: { str: monsterData.str, vit: monsterData.vit, int: monsterData.int, mnd: monsterData.mnd, agi: monsterData.agi },
+                stats: stats,
                 permanentBonus: {},
                 statusAilments: [],
             };
@@ -689,10 +758,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (isWin) {
             resultText.innerHTML += `<p class="log-win">勝利！</p>`;
-            let expGained = 0, drops = [];
+            let expGained = 0, allDrops = [];
+            const partyLuck = getActivePartyMembers().reduce((sum, p) => sum + getTotalStats(p).luk, 0);
+            const luckFactor = 1 + (partyLuck / 200);
+
             gameState.battle.monsters.forEach(m => {
                 expGained += m.exp;
-                if (m.drop) drops.push(m.drop);
+                if (m.drops) {
+                    m.drops.forEach(drop => {
+                        if (Math.random() < drop.chance * luckFactor) {
+                            allDrops.push(drop.itemName);
+                        }
+                    });
+                }
             });
             resultText.innerHTML += `<p class="log-info">${expGained} の経験値を獲得した。</p>`;
 
@@ -729,7 +807,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            drops.forEach(dropName => {
+            allDrops.forEach(dropName => {
                 if (dropName) {
                     gameState.inventory[dropName] = (gameState.inventory[dropName] || 0) + 1;
                     resultText.innerHTML += `<p class="log-item">${dropName} を手に入れた。</p>`;
@@ -857,7 +935,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!character) return;
 
         const stats = getTotalStats(character);
-        document.getElementById('char-detail-header').innerHTML = `<h2>${character.name} <small>(${character.job} Lv.${character.level})</small></h2>`;
+        const race = RACE_MASTER_DATA[character.race];
+        const traits = character.traits.map(t => TRAIT_MASTER_DATA[t].name).join(', ');
+        document.getElementById('char-detail-header').innerHTML = `<h2>${character.name} <small>(${character.job} Lv.${character.level})</small></h2>
+        <p><strong>種族:</strong> ${race.name} | <strong>特性:</strong> ${traits}</p>`;
 
         const statsContainer = document.getElementById('char-detail-stats');
         statsContainer.innerHTML = `
