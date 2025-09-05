@@ -163,18 +163,6 @@ document.addEventListener('DOMContentLoaded', () => {
             character.level++;
             character.skillPoints++;
 
-            const jobGrowth = JOB_MASTER_DATA[character.job];
-            const statGain = {
-                hp: 10 + GROWTH_RANK[jobGrowth.hp], mp: 3 + GROWTH_RANK[jobGrowth.mp],
-                str: 1 + Math.floor(GROWTH_RANK[jobGrowth.str] / 2), vit: 1 + Math.floor(GROWTH_RANK[jobGrowth.vit] / 2),
-                int: 1 + Math.floor(GROWTH_RANK[jobGrowth.int] / 2), mnd: 1 + Math.floor(GROWTH_RANK[jobGrowth.mnd] / 2),
-                agi: 1 + Math.floor(GROWTH_RANK[jobGrowth.agi] / 2), luk: 1 + Math.floor(GROWTH_RANK[jobGrowth.luk] / 2),
-            };
-
-            character.maxHp += statGain.hp; character.maxMp += statGain.mp;
-            Object.keys(statGain).forEach(stat => {
-                if(character.stats[stat] !== undefined) character.stats[stat] += statGain[stat];
-            });
 
             character.hp = getTotalStats(character).maxHp;
             character.mp = getTotalStats(character).maxMp;
@@ -853,6 +841,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         target.hp = Math.min(getTotalStats(target).maxHp, target.hp + item.value);
                         message += ` ${target.name} のHPが ${item.value} 回復した！`;
                         className = 'log-heal';
+                    } else if (item.effect === 'stat_boost') {
+                        const statToBoost = item.stat;
+                        const boostValue = item.value;
+                        if (target.permanentBonus.hasOwnProperty(statToBoost)) {
+                            target.permanentBonus[statToBoost] += boostValue;
+                            if (statToBoost === 'hp') {
+                                target.hp += boostValue;
+                            } else if (statToBoost === 'mp') {
+                                target.mp += boostValue;
+                            }
+                            message += ` ${target.name}の${statToBoost.toUpperCase()}が${boostValue}上がった！`;
+                        } else {
+                             // This case should not happen if item data is correct
+                             message += ' しかし、何も起こらなかった。';
+                        }
+                        className = 'log-levelup';
                     } else if (item.effect === 'cure_poison') {
                         const poison = target.statusAilments.find(a => a.type === STATUS_AILMENTS.POISON.id);
                         if (poison) {
