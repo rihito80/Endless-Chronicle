@@ -8,6 +8,65 @@ const ITEM_MASTER_DATA = {
     // Special Effect & Job-specific Items
     'けいけんちのゆびわ': { name: 'けいけんちのゆびわ', type: 'accessory', rarity: 'RARE', specialEffects: [{ effect: 'exp_gain_up', value: 0.1 }], desc: '獲得経験値が10%増加する指輪。', buyPrice: 2000, sellPrice: 1000 },
     'ゴールドリング': { name: 'ゴールドリング', type: 'accessory', rarity: 'RARE', specialEffects: [{ effect: 'gold_gain_up', value: 0.15 }], desc: '獲得ゴールドが15%増加する指輪。', buyPrice: 2000, sellPrice: 1000 },
+    '炎のアミュレット': { name: '炎のアミュレット', type: 'accessory', rarity: 'UNCOMMON', specialEffects: [{ effect: 'elemental_resistance', element: 'fire', value: 0.25 }], desc: '火属性のダメージを25%軽減する。', buyPrice: 1500, sellPrice: 750 },
+    '氷のアミュレット': { name: '氷のアミュレット', type: 'accessory', rarity: 'UNCOMMON', specialEffects: [{ effect: 'elemental_resistance', element: 'ice', value: 0.25 }], desc: '氷属性のダメージを25%軽減する。', buyPrice: 1500, sellPrice: 750 },
+    '雷のアミュレット': { name: '雷のアミュレット', type: 'accessory', rarity: 'UNCOMMON', specialEffects: [{ effect: 'elemental_resistance', element: 'thunder', value: 0.25 }], desc: '雷属性のダメージを25%軽減する。', buyPrice: 1500, sellPrice: 750 },
+
+    // --- Equipment ---
+    // Weapons
+    'ブロードソード': { name: 'ブロードソード', type: 'weapon', rarity: 'COMMON', desc: '一般的な幅広の剣。', buyPrice: 150, sellPrice: 75 },
+    'ポイズンダガー': {
+        name: 'ポイズンダガー', type: 'weapon', rarity: 'UNCOMMON',
+        desc: '毒が塗られた短剣。攻撃時に毒を与えることがある。',
+        jobRestriction: ['盗賊', '忍者'],
+        specialEffects: [{ effect: 'on_hit_effect', type: 'inflict_status', status: 'POISON', chance: 0.2 }],
+        buyPrice: 1200, sellPrice: 600
+    },
+    'ウィザードスタッフ': {
+        name: 'ウィザードスタッフ', type: 'weapon', rarity: 'UNCOMMON',
+        desc: '魔力が込められた杖。',
+        jobRestriction: ['魔法使い', '賢者'],
+        specialEffects: [{ effect: 'stat_bonus_flat', stat: 'int', value: 5 }],
+        buyPrice: 1000, sellPrice: 500
+    },
+
+    // Armor
+    'レザーアーマー': { name: 'レザーアーマー', type: 'torso', rarity: 'COMMON', desc: '革製の基本的な鎧。', buyPrice: 200, sellPrice: 100 },
+    'リジェネメイル': {
+        name: 'リジェネメイル', type: 'torso', rarity: 'RARE',
+        desc: 'ターン終了時にHPが少し回復する魔法の鎧。',
+        specialEffects: [{ effect: 'hp_regen', value: 10 }],
+        buyPrice: 5000, sellPrice: 2500
+    },
+
+    // Head
+    'レザーヘルム': { name: 'レザーヘルム', type: 'head', rarity: 'COMMON', desc: '革製の基本的な兜。', buyPrice: 100, sellPrice: 50 },
+    '賢者のサークレット': {
+        name: '賢者のサークレット', type: 'head', rarity: 'RARE',
+        desc: 'ターン終了時にMPが少し回復するサークレット。',
+        jobRestriction: ['魔法使い', '僧侶', '賢者'],
+        specialEffects: [{ effect: 'mp_regen', value: 5 }],
+        buyPrice: 4500, sellPrice: 2250
+    },
+
+    // Hands
+    'レザーグローブ': { name: 'レザーグローブ', type: 'hands', rarity: 'COMMON', desc: '革製の基本的な手袋。', buyPrice: 80, sellPrice: 40 },
+    '盗賊の篭手': {
+        name: '盗賊の篭手', type: 'hands', rarity: 'UNCOMMON',
+        desc: 'アイテムを盗む確率が上がると言われている。(効果未実装)',
+        jobRestriction: ['盗賊'],
+        specialEffects: [{ effect: 'steal_chance_up', value: 0.1 }],
+        buyPrice: 1500, sellPrice: 750
+    },
+
+    // Feet
+    'レザーブーツ': { name: 'レザーブーツ', type: 'feet', rarity: 'COMMON', desc: '革製の基本的なブーツ。', buyPrice: 90, sellPrice: 45 },
+    'スピードブーツ': {
+        name: 'スピードブーツ', type: 'feet', rarity: 'UNCOMMON',
+        desc: '装備者の素早さを少し上げる。',
+        specialEffects: [{ effect: 'stat_bonus_flat', stat: 'agi', value: 5 }],
+        buyPrice: 1800, sellPrice: 900
+    },
 
     // ステータスアップアイテム
     'ちからのたね': { name: 'ちからのたね', type: 'consume', rarity: 'COMMON', effect: 'stat_boost', stat: 'str', value: 1, target: 'single_ally', desc: '味方単体のSTRを永続的に1上げる。', sellPrice: 250 },
