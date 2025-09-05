@@ -560,8 +560,12 @@ document.addEventListener('DOMContentLoaded', () => {
         gameState.battle.monsters.forEach((m, index) => {
             let statusIcons = m.statusAilments.map(s => STATUS_AILMENTS[s.type.toUpperCase()]?.icon || '').join('');
             let buffIcons = m.buffs.map(b => BUFF_DEBUFF_MASTER_DATA[b.id]?.icon || '').join('');
+            let weaknessInfo = '';
+            if (m.elementalWeaknesses && m.elementalWeaknesses.length > 0) {
+                weaknessInfo = `<br><span class="weakness-info">弱点: ${m.elementalWeaknesses.join(', ')}</span>`;
+            }
             monsterArea.innerHTML += (m.hp > 0) ?
-                `<div class="monster-info" data-index="${index}">${m.name} ${statusIcons}${buffIcons}<br>HP: ${m.hp}/${m.maxHp}</div>` :
+                `<div class="monster-info" data-index="${index}">${m.name} ${statusIcons}${buffIcons}<br>HP: ${m.hp}/${m.maxHp}${weaknessInfo}</div>` :
                 `<div class="monster-info defeated">${m.name}<br>倒した</div>`;
         });
 
@@ -1208,6 +1212,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameState = JSON.parse(savedData);
 
                 // --- Data Migration Logic ---
+            if (!gameState.emblems) {
+                gameState.emblems = {};
+            }
                 // Add new properties to characters if they don't exist in the save file.
                 gameState.roster.forEach(char => {
                     if (!char.buffs) {
@@ -1954,9 +1961,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 jobSelect.appendChild(option);
             }
         }
-
-        // バトルコマンドUIが正しく隠れるように、起動時にクラスを追加する
-        document.getElementById('command-window').classList.add('sub-window');
 
         document.getElementById('start-new-game').addEventListener('click', () => {
             resetGameState();
