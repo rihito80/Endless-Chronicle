@@ -45,13 +45,13 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const ITEM_MASTER_DATA = {
-        'やくそう': { name: 'やくそう', type: 'consume', effect: 'heal_hp', value: 30, target: 'single_ally', desc: '味方単体のHPを30回復' },
-        'こん棒': { name: 'こん棒', type: 'weapon', stats: { str: 5 } },
-        'どうのつるぎ': { name: 'どうのつるぎ', type: 'weapon', stats: { str: 12, agi: -2 } },
-        'てつのやり': { name: 'てつのやり', type: 'weapon', stats: { str: 18, vit: 5 } },
-        '布の服': { name: '布の服', type: 'armor', stats: { vit: 3 } },
-        'かわのよろい': { name: 'かわのよろい', type: 'armor', stats: { vit: 10 } },
-        'てつのたて': { name: 'てつのたて', type: 'accessory', stats: { vit: 8, agi: -5 } },
+        'やくそう': { name: 'やくそう', type: 'consume', effect: 'heal_hp', value: 30, target: 'single_ally', desc: '味方単体のHPを30回復', buyPrice: 10, sellPrice: 5 },
+        'こん棒': { name: 'こん棒', type: 'weapon', stats: { str: 5 }, buyPrice: 50, sellPrice: 25 },
+        'どうのつるぎ': { name: 'どうのつるぎ', type: 'weapon', stats: { str: 12, agi: -2 }, buyPrice: 200, sellPrice: 100 },
+        'てつのやり': { name: 'てつのやり', type: 'weapon', stats: { str: 18, vit: 5 }, buyPrice: 500, sellPrice: 250 },
+        '布の服': { name: '布の服', type: 'armor', stats: { vit: 3 }, buyPrice: 40, sellPrice: 20 },
+        'かわのよろい': { name: 'かわのよろい', type: 'armor', stats: { vit: 10 }, buyPrice: 250, sellPrice: 125 },
+        'てつのたて': { name: 'てつのたて', type: 'accessory', stats: { vit: 8, agi: -5 }, buyPrice: 300, sellPrice: 150 },
     };
 
     const MONSTER_MASTER_DATA = {
@@ -127,6 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
         roster: [],
         party: [],
         inventory: { 'やくそう': 5, 'こん棒': 1, '布の服': 1 },
+        gold: 100,
         currentScreen: 'title',
         battle: null,
         dungeon: null,
@@ -301,6 +302,95 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         openCharacterDetailScreen(character.id);
+    }
+
+    function deleteCharacter(charId) {
+        if (gameState.roster.length <= 1) {
+            alert('最後の仲間を消去することはできません。');
+            return;
+        }
+
+        const characterToDelete = gameState.roster.find(c => c.id === charId);
+        if (!characterToDelete) return;
+
+        if (confirm(`${characterToDelete.name}を本当に削除しますか？この操作は元に戻せません。`)) {
+            gameState.roster = gameState.roster.filter(c => c.id !== charId);
+            gameState.party = gameState.party.filter(id => id !== charId);
+            openPartyManagementScreen();
+        }
+    }
+
+    function buyItem(itemName) {
+        const item = ITEM_MASTER_DATA[itemName];
+        if (!item || !item.buyPrice) return;
+
+        if (gameState.gold >= item.buyPrice) {
+            gameState.gold -= item.buyPrice;
+            gameState.inventory[itemName] = (gameState.inventory[itemName] || 0) + 1;
+            openShopScreen(); // UIを更新
+        } else {
+            alert('ゴールドが足りません。');
+        }
+    }
+
+    function sellItem(itemName) {
+        const item = ITEM_MASTER_DATA[itemName];
+        if (!item || !item.sellPrice || !gameState.inventory[itemName] || gameState.inventory[itemName] <= 0) {
+            return;
+        }
+
+        gameState.gold += item.sellPrice;
+        gameState.inventory[itemName]--;
+
+        if (gameState.inventory[itemName] <= 0) {
+            delete gameState.inventory[itemName];
+        }
+
+        openShopScreen(); // UIを更新
+    }
+
+    function openShopScreen() {
+        document.getElementById('player-gold').textContent = gameState.gold;
+
+        const buyList = document.getElementById('shop-buy-list');
+        const sellList = document.getElementById('shop-sell-list');
+        buyList.innerHTML = '';
+        sellList.innerHTML = '';
+
+        // 購入リストの生成
+        for (const itemName in ITEM_MASTER_DATA) {
+            const item = ITEM_MASTER_DATA[itemName];
+            if (item.buyPrice) {
+                const entryDiv = document.createElement('div');
+                entryDiv.className = 'item-list-entry';
+                entryDiv.innerHTML = `<span>${itemName} (${item.buyPrice}G)</span>`;
+
+                const buyBtn = document.createElement('button');
+                buyBtn.textContent = '購入';
+                buyBtn.disabled = gameState.gold < item.buyPrice;
+                buyBtn.onclick = () => buyItem(itemName);
+                entryDiv.appendChild(buyBtn);
+                buyList.appendChild(entryDiv);
+            }
+        }
+
+        // 売却リストの生成
+        for (const itemName in gameState.inventory) {
+            const item = ITEM_MASTER_DATA[itemName];
+            const quantity = gameState.inventory[itemName];
+            if (item && item.sellPrice && quantity > 0) {
+                const entryDiv = document.createElement('div');
+                entryDiv.className = 'item-list-entry';
+                entryDiv.innerHTML = `<span>${itemName} (x${quantity}) - 売値: ${item.sellPrice}G</span>`;
+
+                const sellBtn = document.createElement('button');
+                sellBtn.textContent = '売却';
+                sellBtn.onclick = () => sellItem(itemName);
+                entryDiv.appendChild(sellBtn);
+                sellList.appendChild(entryDiv);
+            }
+        }
+        showScreen('shop-screen');
     }
 
     // ========================================================================
@@ -542,7 +632,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function endBattle(isWin) {
         const resultText = document.getElementById('result-text');
         const nextBattleBtn = document.getElementById('next-battle-btn');
-        resultText.innerHTML = ''; // Clear previous results
+        const resultExpBarsContainer = document.getElementById('result-exp-bars');
+        resultText.innerHTML = '';
+        resultExpBarsContainer.innerHTML = '';
 
         if (isWin) {
             resultText.innerHTML += `<p class="log-win">勝利！</p>`;
@@ -559,6 +651,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     levelUp(p).forEach(log => {
                         resultText.innerHTML += `<p class="${log.className}">${log.message}</p>`;
                     });
+
+                    // EXPバーを生成
+                    const nextLevelExp = getNextLevelExp(p.level);
+                    const expPercentage = Math.round((p.exp / nextLevelExp) * 100);
+                    const expBarHTML = `
+                        <div class="result-exp-bar-item">
+                            <span class="name">${p.name} (Lv.${p.level})</span>
+                            <div class="exp-bar-container">
+                                <div class="exp-bar-fill" style="width: ${expPercentage}%;"></div>
+                                <span class="exp-bar-text">${p.exp} / ${nextLevelExp}</span>
+                            </div>
+                        </div>
+                    `;
+                    resultExpBarsContainer.innerHTML += expBarHTML;
                 }
             });
 
@@ -700,6 +806,12 @@ document.addEventListener('DOMContentLoaded', () => {
             <span>AGI: ${stats.agi}</span><span>LUK: ${stats.luk}</span>
         `;
 
+        // EXPバーを更新
+        const nextLevelExp = getNextLevelExp(character.level);
+        const expPercentage = Math.round((character.exp / nextLevelExp) * 100);
+        document.getElementById('char-detail-exp-fill').style.width = `${expPercentage}%`;
+        document.getElementById('char-detail-exp-text').textContent = `${character.exp} / ${nextLevelExp}`;
+
         const equipContainer = document.getElementById('char-detail-equipment');
         equipContainer.innerHTML = '';
         ['weapon', 'armor', 'accessory'].forEach(slot => {
@@ -795,24 +907,39 @@ document.addEventListener('DOMContentLoaded', () => {
             card.className = 'character-card';
             card.innerHTML = `<span>${char.name} (${char.job} Lv.${char.level})</span>`;
 
-            const btn = document.createElement('button');
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'character-card-buttons';
+
+            const moveBtn = document.createElement('button');
             if (activeMembers.includes(char)) {
-                btn.textContent = '待機させる';
-                btn.onclick = () => {
+                moveBtn.textContent = '待機させる';
+                moveBtn.onclick = () => {
                     gameState.party = gameState.party.filter(id => id !== char.id);
                     openPartyManagementScreen();
                 };
-                activeList.appendChild(card);
             } else {
-                btn.textContent = 'メンバーに入れる';
-                btn.disabled = activeMembers.length >= 4;
-                btn.onclick = () => {
+                moveBtn.textContent = 'メンバーに入れる';
+                moveBtn.disabled = activeMembers.length >= 4;
+                moveBtn.onclick = () => {
                     gameState.party.push(char.id);
                     openPartyManagementScreen();
                 };
+            }
+            buttonContainer.appendChild(moveBtn);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '消去';
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.onclick = () => deleteCharacter(char.id);
+            buttonContainer.appendChild(deleteBtn);
+
+            card.appendChild(buttonContainer);
+
+            if (activeMembers.includes(char)) {
+                activeList.appendChild(card);
+            } else {
                 reserveList.appendChild(card);
             }
-            card.appendChild(btn);
         });
         showScreen('party-management-screen');
     }
@@ -1079,6 +1206,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         document.getElementById('go-to-party-management-btn').addEventListener('click', openPartyManagementScreen);
+        document.getElementById('go-to-shop-btn').addEventListener('click', openShopScreen);
         document.getElementById('recruit-member-btn').addEventListener('click', () => {
             document.getElementById('character-creation-title').textContent = "新しい仲間を勧誘";
             document.getElementById('cancel-creation-btn').classList.remove('hidden');
