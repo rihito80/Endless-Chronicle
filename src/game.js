@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (character.buffs) {
             character.buffs.forEach(buffInstance => {
                 const buffData = BUFF_DEBUFF_MASTER_DATA[buffInstance.id];
-                if (buffData && buffData.stat && typeof total[buffData.stat] === 'number') {
+                if (buffData && buffData.stat && total[buffData.stat] != null && !isNaN(total[buffData.stat])) {
                     total[buffData.stat] = Math.round(total[buffData.stat] * buffData.modifier);
                 }
             });
