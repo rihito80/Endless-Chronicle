@@ -370,20 +370,46 @@ document.addEventListener('DOMContentLoaded', () => {
         buyList.innerHTML = '';
         sellList.innerHTML = '';
 
+        const createItemEntry = (item, quantity = 0, isBuying = true) => {
+            const entryDiv = document.createElement('div');
+            entryDiv.className = 'item-list-entry';
+
+            let details = '';
+            if (item.stats) {
+                details = Object.entries(item.stats).map(([stat, val]) => `${stat.toUpperCase()}: ${val > 0 ? '+' : ''}${val}`).join(', ');
+            } else if (item.desc) {
+                details = item.desc;
+            }
+
+            const mainText = isBuying
+                ? `${item.name} (${item.buyPrice}G)`
+                : `${item.name} (x${quantity}) - 売値: ${item.sellPrice}G`;
+
+            entryDiv.innerHTML = `
+                <div style="flex-grow: 1; overflow: hidden;">
+                    <span style="word-break: break-all;">${mainText}</span>
+                    <div class="skill-desc" style="font-size: 12px; opacity: 0.8; margin-top: 4px; word-break: break-all;">${details}</div>
+                </div>
+            `;
+
+            const btn = document.createElement('button');
+            if (isBuying) {
+                btn.textContent = '購入';
+                btn.disabled = gameState.gold < item.buyPrice;
+                btn.onclick = () => buyItem(item.name);
+            } else {
+                btn.textContent = '売却';
+                btn.onclick = () => sellItem(item.name);
+            }
+            entryDiv.appendChild(btn);
+            return entryDiv;
+        };
+
         // 購入リストの生成
         for (const itemName in ITEM_MASTER_DATA) {
             const item = ITEM_MASTER_DATA[itemName];
             if (item.buyPrice) {
-                const entryDiv = document.createElement('div');
-                entryDiv.className = 'item-list-entry';
-                entryDiv.innerHTML = `<span>${itemName} (${item.buyPrice}G)</span>`;
-
-                const buyBtn = document.createElement('button');
-                buyBtn.textContent = '購入';
-                buyBtn.disabled = gameState.gold < item.buyPrice;
-                buyBtn.onclick = () => buyItem(itemName);
-                entryDiv.appendChild(buyBtn);
-                buyList.appendChild(entryDiv);
+                buyList.appendChild(createItemEntry(item, 0, true));
             }
         }
 
@@ -392,15 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const item = ITEM_MASTER_DATA[itemName];
             const quantity = gameState.inventory[itemName];
             if (item && item.sellPrice && quantity > 0) {
-                const entryDiv = document.createElement('div');
-                entryDiv.className = 'item-list-entry';
-                entryDiv.innerHTML = `<span>${itemName} (x${quantity}) - 売値: ${item.sellPrice}G</span>`;
-
-                const sellBtn = document.createElement('button');
-                sellBtn.textContent = '売却';
-                sellBtn.onclick = () => sellItem(itemName);
-                entryDiv.appendChild(sellBtn);
-                sellList.appendChild(entryDiv);
+                sellList.appendChild(createItemEntry(item, quantity, false));
             }
         }
         showScreen('shop-screen');
@@ -417,6 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
            if (clear) logWindow.innerHTML = '';
            const p = document.createElement('p');
            p.innerHTML = message; // innerHTML to allow for bold tags etc.
+           p.style.wordBreak = 'break-word'; // テキストの折り返しを許可
            if(className) p.classList.add(className);
            logWindow.appendChild(p);
            logWindow.scrollTop = logWindow.scrollHeight;
@@ -854,7 +873,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (['weapon', 'armor', 'accessory'].includes(item.type)) {
                 const entryDiv = document.createElement('div');
                 entryDiv.className = 'item-list-entry';
-                entryDiv.innerHTML = `<span>${itemName} (x${gameState.inventory[itemName]})</span>`;
+
+                let details = '';
+                if (item.stats) {
+                    details = Object.entries(item.stats).map(([stat, val]) => `${stat.toUpperCase()}: ${val > 0 ? '+' : ''}${val}`).join(', ');
+                }
+
+                entryDiv.innerHTML = `
+                    <div style="flex-grow: 1; overflow: hidden;">
+                        <span style="word-break: break-all;">${itemName} (x${gameState.inventory[itemName]})</span>
+                        <div class="skill-desc" style="font-size: 12px; opacity: 0.8; margin-top: 4px; word-break: break-all;">${details}</div>
+                    </div>
+                `;
+
                 const equipBtn = document.createElement('button');
                 equipBtn.textContent = '装備';
                 equipBtn.onclick = () => equipItem(character, itemName);
@@ -1303,10 +1334,15 @@ document.addEventListener('DOMContentLoaded', () => {
                             const btn = document.createElement('button');
                             btn.textContent = `${skill.name} (MP:${skill.mp})`;
                             btn.disabled = actor.mp < skill.mp;
+                            // テキストがボタンからはみ出ないようにスタイルを調整
+                            btn.style.whiteSpace = 'normal';
+                            btn.style.wordBreak = 'break-word';
+                            btn.style.height = 'auto';
+                            btn.style.minHeight = '40px'; // 元のボタンの高さに近い値
                             btn.onclick = () => {
                                 gameState.battle.action = { type: 'skill', actor, skill };
-                                // [修正点] 攻撃スキルかつ敵が1体なら自動でターゲット
-                                if (skill.target === 'single_enemy') {
+                                // スキルのターゲットタイプに応じて処理を分岐
+                                if (skill.target === 'single_enemy' || skill.target === 'double_attack') {
                                     if (validEnemies.length === 1) {
                                         gameState.battle.action.target = validEnemies[0];
                                         executeTurn();
@@ -1315,7 +1351,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                     }
                                 } else if (skill.target.includes('all')) {
                                     executeTurn();
-                                } else {
+                                } else if (skill.target === 'self') {
+                                    gameState.battle.action.target = actor;
+                                    executeTurn();
+                                } else { // single_ally など
                                     promptForTarget('ally');
                                 }
                             };
