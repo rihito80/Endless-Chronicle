@@ -564,22 +564,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getUnitElement(unit) {
-        if (!unit) return null;
-        if (unit.job) { // It's a player character
-            return document.querySelector(`#party-status-battle .party-member[data-id="${unit.id}"]`);
-        } else { // It's a monster
-            const index = gameState.battle.monsters.findIndex(m => m.id === unit.id);
-            if (index > -1) {
-                return document.querySelector(`#monster-area .monster-info[data-index="${index}"]`);
-            }
-        }
-        return null;
+        if (!unit || !gameState.battle) return null;
+        return gameState.battle.unitElements.get(unit.id) || null;
     }
 
     function updateBattleUI() {
         document.getElementById('dungeon-floor-tracker').textContent = `地下 ${gameState.dungeon.currentFloor}階`;
         const monsterArea = document.getElementById('monster-area');
+        const partyStatus = document.getElementById('party-status-battle');
+
+        // Clear previous content and the element map
         monsterArea.innerHTML = '';
+        partyStatus.innerHTML = '';
+        if (gameState.battle) {
+            gameState.battle.unitElements.clear();
+        }
+
+        // Draw Monsters
         gameState.battle.monsters.forEach((m, index) => {
             let statusIcons = m.statusAilments.map(s => STATUS_AILMENTS[s.type.toUpperCase()]?.icon || '').join('');
             let buffIcons = m.buffs.map(b => BUFF_DEBUFF_MASTER_DATA[b.id]?.icon || '').join('');
@@ -587,22 +588,42 @@ document.addEventListener('DOMContentLoaded', () => {
             if (m.elementalWeaknesses && m.elementalWeaknesses.length > 0) {
                 weaknessInfo = `<br><span class="weakness-info">弱点: ${m.elementalWeaknesses.join(', ')}</span>`;
             }
-            monsterArea.innerHTML += (m.hp > 0) ?
-                `<div class="monster-info" data-index="${index}">${m.name} ${statusIcons}${buffIcons}<br>HP: ${m.hp}/${m.maxHp}${weaknessInfo}</div>` :
-                `<div class="monster-info defeated">${m.name}<br>倒した</div>`;
+
+            const monsterDiv = document.createElement('div');
+            monsterDiv.className = 'monster-info';
+            monsterDiv.dataset.index = index;
+
+            if (m.hp > 0) {
+                monsterDiv.innerHTML = `${m.name} ${statusIcons}${buffIcons}<br>HP: ${m.hp}/${m.maxHp}${weaknessInfo}`;
+            } else {
+                monsterDiv.classList.add('defeated');
+                monsterDiv.innerHTML = `${m.name}<br>倒した`;
+            }
+
+            monsterArea.appendChild(monsterDiv);
+            gameState.battle.unitElements.set(m.id, monsterDiv); // Map the element
         });
 
-        const partyStatus = document.getElementById('party-status-battle');
-        partyStatus.innerHTML = '';
+        // Draw Party Members
         getActivePartyMembers().forEach((p) => {
             const pStats = getTotalStats(p);
             let statusIcons = p.statusAilments.map(s => STATUS_AILMENTS[s.type.toUpperCase()]?.icon || '').join('');
             let buffIcons = p.buffs.map(b => BUFF_DEBUFF_MASTER_DATA[b.id]?.icon || '').join('');
-             partyStatus.innerHTML += `
-                <div class="party-member ${p === gameState.battle.activeCharacter ? 'active-turn' : ''}" data-id="${p.id}">
-                     <strong>${p.name} ${statusIcons}${buffIcons}</strong> (Lv.${p.level})<br>
-                     ❤️ HP: ${p.hp}/${pStats.maxHp} | 💧 MP: ${p.mp}/${pStats.maxMp}
-                </div>`;
+
+            const partyMemberDiv = document.createElement('div');
+            partyMemberDiv.className = 'party-member';
+            partyMemberDiv.dataset.id = p.id;
+            if (p === gameState.battle.activeCharacter) {
+                partyMemberDiv.classList.add('active-turn');
+            }
+
+            partyMemberDiv.innerHTML = `
+                 <strong>${p.name} ${statusIcons}${buffIcons}</strong> (Lv.${p.level})<br>
+                 ❤️ HP: ${p.hp}/${pStats.maxHp} | 💧 MP: ${p.mp}/${pStats.maxMp}
+            `;
+
+            partyStatus.appendChild(partyMemberDiv);
+            gameState.battle.unitElements.set(p.id, partyMemberDiv); // Map the element
         });
     }
 
@@ -710,6 +731,7 @@ document.addEventListener('DOMContentLoaded', () => {
             turnIndex: 0,
             activeCharacter: null,
             action: null,
+            unitElements: new Map(),
         };
 
         document.getElementById('battle-log').innerHTML = '';
@@ -1194,7 +1216,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Emblem Drop Logic
             const dungeonName = gameState.dungeon.name;
             const emblem = Object.values(EMBLEM_MASTER_DATA).find(e => e.dungeonKey === dungeonName);
-            if (emblem && Math.random() < 0.05) { // 5% drop chance for emblems
+            if (emblem && Math.random() < 0.02) { // 2% drop chance for emblems
                 gameState.emblems[emblem.name] = (gameState.emblems[emblem.name] || 0) + 1;
                 resultText.innerHTML += `<p class="log-win"><strong>「${emblem.name}」を手に入れた！</strong></p>`;
             }
