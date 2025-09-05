@@ -17,165 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
         RESIST: 0.5,
         NORMAL: 1.0,
     };
-    const ELEMENTS = {
-        NONE: '無',
-        FIRE: '火',
-        ICE: '氷',
-        THUNDER: '雷',
-        HOLY: '聖',
-        DARK: '闇',
-    };
-    const STATUS_AILMENTS = {
-        POISON: { id: 'poison', name: '毒', icon: '☠️' },
-        PARALYSIS: { id: 'paralysis', name: '麻痺', icon: '⚡' },
-        SILENCE: { id: 'silence', name: '沈黙', icon: '🤫' },
-    };
-
-    const SKILL_MASTER_DATA = {
-        'スラッシュ': { name: 'スラッシュ', mp: 5, type: 'physical_attack', power: 1.2, target: 'single_enemy', desc: '敵単体に物理ダメージ' },
-        'ファイアボール': { name: 'ファイアボール', mp: 8, type: 'magical_attack', power: 1.0, target: 'single_enemy', element: ELEMENTS.FIRE, desc: '敵単体に火属性の魔法ダメージ' },
-        'ヒール': { name: 'ヒール', mp: 10, type: 'heal', power: 1.0, target: 'single_ally', desc: '味方単体のHPを回復' },
-        'パワースマッシュ': { name: 'パワースマッシュ', mp: 10, type: 'physical_attack', power: 1.8, target: 'single_enemy', desc: '敵単体に物理大ダメージ' },
-        'エリアヒール': { name: 'エリアヒール', mp: 25, type: 'heal', power: 0.8, target: 'all_allies', desc: '味方全体のHPを回復' },
-        'サンダー': { name: 'サンダー', mp: 15, type: 'magical_attack', power: 1.5, target: 'single_enemy', element: ELEMENTS.THUNDER, desc: '敵単体に雷属性の魔法ダメージ' },
-        'スティール': { name: 'スティール', mp: 2, type: 'support', power: 0, target: 'single_enemy', desc: '敵単体からアイテムを盗む(未実装)' },
-        'ダブルショット': { name: 'ダブルショット', mp: 12, type: 'physical_attack', power: 0.8, target: 'double_attack', desc: '敵単体に2回物理ダメージ' },
-        'ポイズンアロー': { name: 'ポイズンアロー', mp: 8, type: 'physical_attack', power: 1.0, target: 'single_enemy', inflicts: [{ type: STATUS_AILMENTS.POISON.id, chance: 0.7, turns: 3 }], desc: '敵単体を確率で毒状態にする' },
-        'ファストステップ': { name: 'ファストステップ', mp: 8, type: 'support', power: 1.2, target: 'self', desc: '自身のAGIを上昇させる(未実装)' },
-
-        // 新規追加スキル
-        'アイスストーム': { name: 'アイスストーム', mp: 20, type: 'magical_attack', power: 0.8, target: 'all_enemies', element: ELEMENTS.ICE, desc: '敵全体に氷属性のダメージ' },
-        'サンダーボルト': { name: 'サンダーボルト', mp: 22, type: 'magical_attack', power: 0.7, target: 'all_enemies', element: ELEMENTS.THUNDER, desc: '敵全体に雷属性のダメージ' },
-        'ホーリーライト': { name: 'ホーリーライト', mp: 18, type: 'magical_attack', power: 1.8, target: 'single_enemy', element: ELEMENTS.HOLY, desc: '敵単体に聖属性の大ダメージ' },
-        'ベノムエッジ': { name: 'ベノムエッジ', mp: 10, type: 'physical_attack', power: 1.1, target: 'single_enemy', inflicts: [{ type: STATUS_AILMENTS.POISON.id, chance: 0.9, turns: 4 }], desc: '敵単体を高確率で毒状態にする' },
-        'パラライズショット': { name: 'パラライズショット', mp: 12, type: 'physical_attack', power: 0.9, target: 'single_enemy', inflicts: [{ type: STATUS_AILMENTS.PARALYSIS.id, chance: 0.4, turns: 2 }], desc: '敵単体を確率で麻痺させる' },
-        'サイレンスブレード': { name: 'サイレンスブレード', mp: 10, type: 'physical_attack', power: 1.0, target: 'single_enemy', inflicts: [{ type: STATUS_AILMENTS.SILENCE.id, chance: 0.5, turns: 3 }], desc: '敵単体を確率で沈黙させる' },
-    };
-
-    const SKILL_TREE_DATA = {
-        '戦士': {
-            'STR+5': { type: 'STAT_BOOST', stat: 'str', value: 5, cost: 1, requiredLevel: 3 },
-            'パワースマッシュ': { type: 'SKILL', skillName: 'パワースマッシュ', cost: 2, requiredLevel: 5 },
-            'VIT+10': { type: 'STAT_BOOST', stat: 'vit', value: 10, cost: 2, requiredLevel: 8 },
-            'サイレンスブレード': { type: 'SKILL', skillName: 'サイレンスブレード', cost: 3, requiredLevel: 12},
-            'STR+15': { type: 'STAT_BOOST', stat: 'str', value: 15, cost: 4, requiredLevel: 20 },
-        },
-        '魔法使い': {
-            'INT+5': { type: 'STAT_BOOST', stat: 'int', value: 5, cost: 1, requiredLevel: 3 },
-            'サンダー': { type: 'SKILL', skillName: 'サンダー', cost: 2, requiredLevel: 8 },
-            'アイスストーム': { type: 'SKILL', skillName: 'アイスストーム', cost: 3, requiredLevel: 15 },
-            'MP+30': { type: 'STAT_BOOST', stat: 'maxMp', value: 30, cost: 2, requiredLevel: 10 },
-            'サンダーボルト': { type: 'SKILL', skillName: 'サンダーボルト', cost: 4, requiredLevel: 22 },
-        },
-        '僧侶': {
-            'MND+5': { type: 'STAT_BOOST', stat: 'mnd', value: 5, cost: 1, requiredLevel: 3 },
-            'エリアヒール': { type: 'SKILL', skillName: 'エリアヒール', cost: 3, requiredLevel: 10 },
-            'VIT+8': { type: 'STAT_BOOST', stat: 'vit', value: 8, cost: 2, requiredLevel: 7 },
-            'ホーリーライト': { type: 'SKILL', skillName: 'ホーリーライト', cost: 3, requiredLevel: 14 },
-            'MP+20': { type: 'STAT_BOOST', stat: 'maxMp', value: 20, cost: 2, requiredLevel: 9 },
-        },
-        '盗賊': {
-            'AGI+5': { type: 'STAT_BOOST', stat: 'agi', value: 5, cost: 1, requiredLevel: 3 },
-            'ファストステップ': { type: 'SKILL', skillName: 'ファストステップ', cost: 2, requiredLevel: 6 },
-            'LUK+10': { type: 'STAT_BOOST', stat: 'luk', value: 10, cost: 2, requiredLevel: 8 },
-            'ベノムエッジ': { type: 'SKILL', skillName: 'ベノムエッジ', cost: 3, requiredLevel: 11 },
-            'AGI+10': { type: 'STAT_BOOST', stat: 'agi', value: 10, cost: 3, requiredLevel: 15 },
-        },
-        '狩人': {
-            'STR+3': { type: 'STAT_BOOST', stat: 'str', value: 3, cost: 1, requiredLevel: 2 },
-            'AGI+3': { type: 'STAT_BOOST', stat: 'agi', value: 3, cost: 1, requiredLevel: 2 },
-            'ポイズンアロー': { type: 'SKILL', skillName: 'ポイズンアロー', cost: 3, requiredLevel: 7 },
-            'パラライズショット': { type: 'SKILL', skillName: 'パラライズショット', cost: 3, requiredLevel: 13 },
-            'LUK+15': { type: 'STAT_BOOST', stat: 'luk', value: 15, cost: 4, requiredLevel: 18 },
-        }
-    };
-
-    const ITEM_MASTER_DATA = {
-        // 消費アイテム
-        'やくそう': { name: 'やくそう', type: 'consume', effect: 'heal_hp', value: 30, target: 'single_ally', desc: '味方単体のHPを30回復する。', buyPrice: 10, sellPrice: 5 },
-        'どくけしそう': { name: 'どくけしそう', type: 'consume', effect: 'cure_poison', value: 0, target: 'single_ally', desc: '味方単体の毒状態を回復する。', buyPrice: 15, sellPrice: 7 },
-        'せいすい': { name: 'せいすい', type: 'consume', effect: 'purify', value: 0, target: 'single_ally', desc: '聖なる力で清められた水。アンデッドに有効。(効果未実装)', buyPrice: 30, sellPrice: 15 },
-        'エリクサー': { name: 'エリクサー', type: 'consume', effect: 'heal_full', value: 9999, target: 'single_ally', desc: '味方単体のHPとMPを完全に回復する。', buyPrice: 1000, sellPrice: 500 },
-
-        // 武器
-        'こん棒': { name: 'こん棒', type: 'weapon', stats: { str: 5 }, desc: '原始的な打撃武器。', buyPrice: 50, sellPrice: 25 },
-        'どうのつるぎ': { name: 'どうのつるぎ', type: 'weapon', stats: { str: 12, agi: -2 }, desc: '青銅で作られた標準的な剣。', buyPrice: 200, sellPrice: 100 },
-        'てつのやり': { name: 'てつのやり', type: 'weapon', stats: { str: 18, vit: 5 }, desc: '鉄製の長い槍。防御も少し上がる。', buyPrice: 500, sellPrice: 250 },
-        'ぎんのナイフ': { name: 'ぎんのナイフ', type: 'weapon', stats: { str: 10, agi: 5 }, desc: '銀製のナイフ。素早さを少し上げる。', buyPrice: 400, sellPrice: 200 },
-
-        // 防具
-        '布の服': { name: '布の服', type: 'armor', stats: { vit: 3 }, desc: 'ただの布の服。気休め程度の防御力。', buyPrice: 40, sellPrice: 20 },
-        'かわのよろい': { name: 'かわのよろい', type: 'armor', stats: { vit: 10 }, desc: '硬い皮で作られた鎧。それなりに頑丈。', buyPrice: 250, sellPrice: 125 },
-        'まどうしのローブ': { name: 'まどうしのローブ', type: 'armor', stats: { vit: 5, int: 8, mnd: 5 }, desc: '魔力を高めるローブ。魔法使いに最適。', buyPrice: 450, sellPrice: 225 },
-
-        // アクセサリー
-        'てつのたて': { name: 'てつのたて', type: 'accessory', stats: { vit: 8, agi: -5 }, desc: '鉄製の盾。重いが防御力は高い。', buyPrice: 300, sellPrice: 150 },
-        'ちからの指輪': { name: 'ちからの指輪', type: 'accessory', stats: { str: 5 }, desc: '力がみなぎる不思議な指輪。', buyPrice: 600, sellPrice: 300 },
-    };
-
-    const MONSTER_MASTER_DATA = {
-        'スライム': { name: 'スライム', hp: 25, str: 10, vit: 5, int: 5, mnd: 5, agi: 8, exp: 5, drop: 'やくそう', elementalResistances: [ELEMENTS.THUNDER] },
-        'ゴブリン': { name: 'ゴブリン', hp: 40, str: 15, vit: 8, int: 5, mnd: 5, agi: 12, exp: 10, drop: 'こん棒' },
-        'コウモリ': { name: 'コウモリ', hp: 30, str: 12, vit: 6, int: 5, mnd: 5, agi: 20, exp: 8, drop: null },
-        'オーク': { name: 'オーク', hp: 80, str: 25, vit: 15, int: 5, mnd: 8, agi: 10, exp: 25, drop: 'てつのやり', elementalWeaknesses: [ELEMENTS.FIRE] },
-        'スケルトン': { name: 'スケルトン', hp: 60, str: 20, vit: 20, int: 5, mnd: 10, agi: 15, exp: 20, drop: 'どうのつるぎ', elementalWeaknesses: [ELEMENTS.HOLY], elementalResistances: [ELEMENTS.DARK] },
-        'リザードマン': { name: 'リザードマン', hp: 120, str: 35, vit: 25, int: 10, mnd: 15, agi: 25, exp: 50, drop: 'かわのよろい', elementalWeaknesses: [ELEMENTS.ICE] },
-        'メイジ': { name: 'メイジ', hp: 70, str: 15, vit: 18, int: 30, mnd: 25, agi: 18, exp: 45, drop: null },
-        'ゴーレム': { name: 'ゴーレム', hp: 200, str: 45, vit: 50, int: 5, mnd: 20, agi: 5, exp: 80, drop: 'てつのたて', elementalResistances: [ELEMENTS.FIRE, ELEMENTS.ICE, ELEMENTS.THUNDER] },
-        'ワイバーン': { name: 'ワイバーン', hp: 350, str: 60, vit: 40, int: 25, mnd: 30, agi: 50, exp: 200, drop: null, elementalWeaknesses: [ELEMENTS.THUNDER] },
-    };
-
-    const DUNGEON_MASTER_DATA = {
-        '始まりの草原': {
-            name: '始まりの草原', depth: 3,
-            encounterGroups: {
-                '1-2': [ // 1-2階
-                    { monsters: ['スライム'], weight: 5 },
-                    { monsters: ['スライム', 'スライム'], weight: 3 },
-                    { monsters: ['コウモリ'], weight: 4 },
-                ],
-                '3-3': [ // 3階
-                    { monsters: ['スライム', 'コウモリ'], weight: 1 },
-                    { monsters: ['ゴブリン'], weight: 5 },
-                ],
-            }
-        },
-        'ゴブリンの洞窟': {
-            name: 'ゴブリンの洞窟', depth: 5,
-            encounterGroups: {
-                '1-3': [
-                    { monsters: ['ゴブリン'], weight: 3 },
-                    { monsters: ['ゴブリン', 'コウモリ'], weight: 5 },
-                    { monsters: ['ゴブリン', 'ゴブリン'], weight: 2 },
-                ],
-                '4-5': [
-                    { monsters: ['ゴブリン', 'ゴブリン', 'コウモリ'], weight: 3 },
-                    { monsters: ['オーク'], weight: 4 },
-                    { monsters: ['スケルトン'], weight: 3 },
-                ],
-            }
-        },
-        '廃墟の砦': {
-            name: '廃墟の砦', depth: 10,
-            encounterGroups: {
-                '1-4': [
-                    { monsters: ['オーク'], weight: 3 },
-                    { monsters: ['スケルトン', 'スケルトン'], weight: 4 },
-                    { monsters: ['オーク', 'ゴブリン'], weight: 3 },
-                ],
-                '5-7': [
-                    { monsters: ['リザードマン'], weight: 5 },
-                    { monsters: ['オーク', 'スケルトン', 'コウモリ'], weight: 3 },
-                    { monsters: ['メイジ'], weight: 2 },
-                ],
-                '8-10': [
-                    { monsters: ['リザードマン', 'メイジ'], weight: 4 },
-                    { monsters: ['ゴーレム'], weight: 3 },
-                    { monsters: ['ワイバーン'], weight: 1 },
-                ]
-            }
-        },
-    };
 
     // ========================================================================
     // 2. ゲーム状態管理
@@ -387,6 +228,19 @@ document.addEventListener('DOMContentLoaded', () => {
             delete gameState.inventory[itemName];
         }
 
+        openCharacterDetailScreen(character.id);
+    }
+
+    function unequipItem(character, slot) {
+        const itemName = character.equipment[slot];
+        if (!itemName) return;
+
+        // Add item back to inventory
+        gameState.inventory[itemName] = (gameState.inventory[itemName] || 0) + 1;
+        // Remove from character's equipment
+        character.equipment[slot] = null;
+
+        // Refresh the screen
         openCharacterDetailScreen(character.id);
     }
 
@@ -1040,8 +894,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const itemName = character.equipment[slot];
             const slotDiv = document.createElement('div');
             slotDiv.className = 'equip-slot';
-            slotDiv.innerHTML = `<span>${slot.charAt(0).toUpperCase() + slot.slice(1)}</span>
-                                 <span>${itemName || 'なし'}</span>`;
+
+            let content = `<span>${slot.charAt(0).toUpperCase() + slot.slice(1)}</span>
+                           <span>${itemName || 'なし'}</span>`;
+
+            if (itemName) {
+                const unequipBtn = document.createElement('button');
+                unequipBtn.textContent = '外す';
+                unequipBtn.onclick = () => unequipItem(character, slot);
+                slotDiv.innerHTML = content;
+                slotDiv.appendChild(unequipBtn);
+            } else {
+                slotDiv.innerHTML = content;
+            }
             equipContainer.appendChild(slotDiv);
         });
 
@@ -1492,6 +1357,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('job-change-options').classList.add('hidden');
         });
         document.getElementById('go-to-reincarnation-btn').addEventListener('click', openReincarnationScreen);
+        document.getElementById('go-to-help-btn').addEventListener('click', () => showScreen('help-screen'));
         document.getElementById('cancel-reincarnation-btn').addEventListener('click', () => {
             document.getElementById('reincarnation-options').classList.add('hidden');
         });

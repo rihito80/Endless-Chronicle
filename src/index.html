@@ -41,6 +41,7 @@
                 <button id="go-to-temple-btn">転職神殿</button>
                 <button id="go-to-reincarnation-btn">転生の祭壇</button>
                 <button id="open-save-screen">セーブ</button>
+                <button id="go-to-help-btn">ヘルプ</button>
             </div>
              <div id="hub-log" class="log-window"></div>
         </div>
@@ -199,7 +200,36 @@
                 <button id="back-from-save-load-screen">戻る</button>
             </div>
         </div>
+
+        <!-- ヘルプ画面 -->
+        <div id="help-screen" class="screen hidden">
+            <h2>ヘルプ</h2>
+            <div class="help-content">
+                <h3>属性について</h3>
+                <p>特定のスキルやモンスターは属性を持っています。属性の相性によってダメージが増減します。</p>
+                <ul>
+                    <li><strong class="log-critical">弱点: ダメージ 1.5倍</strong></li>
+                    <li><strong class="log-resist">耐性: ダメージ 0.5倍</strong></li>
+                </ul>
+                <p>例: 火属性のスキルは、氷属性の弱点を持つモンスターに大ダメージを与えます。</p>
+
+                <h3>状態異常について</h3>
+                <p>スキルなどによって、キャラクターが状態異常になることがあります。</p>
+                <ul>
+                    <li><strong>毒 (☠️):</strong> 自分のターン終了時に最大HPの5%のダメージを受けます。数ターンで自然に治ります。</li>
+                    <li><strong>麻痺 (⚡):</strong> 自分のターンの開始時、50%の確率で行動できなくなります。数ターンで自然に治ります。</li>
+                    <li><strong>沈黙 (🤫):</strong> 「スキル」コマンドが使えなくなります。数ターンで自然に治ります。</li>
+                </ul>
+            </div>
+            <button id="back-to-hub-from-help" class="back-to-hub">拠点へ戻る</button>
+        </div>
     </div>
+    <!-- Data Files -->
+    <script src="data/skills.js"></script>
+    <script src="data/items.js"></script>
+    <script src="data/monsters.js"></script>
+    <script src="data/dungeons.js"></script>
+    <!-- Main Game Logic -->
     <script src="game.js"></script>
 </body>
 </html>
