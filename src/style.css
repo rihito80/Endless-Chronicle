@@ -10,8 +10,10 @@ body {
 }
 
 #game-container {
-    width: 800px;
-    height: 600px;
+    max-width: 1536px;
+    max-height: 700px;
+    width: 95vw;
+    height: 95vh;
     background-color: #222;
     border: 2px solid #888;
     box-shadow: 0 0 15px rgba(0,0,0,0.7);
@@ -20,6 +22,7 @@ body {
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
+    overflow: auto;
 }
 
 .screen {
@@ -139,8 +142,8 @@ input, select {
 .character-card button { padding: 5px 10px; font-size: 12px; }
 
 /* Character Detail Screen */
-.detail-container { display: flex; width: 100%; flex-grow: 1; gap: 20px; margin-bottom: 15px; }
-.detail-left, .detail-right { width: 50%; display: flex; flex-direction: column; gap: 15px; }
+.detail-container { display: flex; width: 100%; flex-grow: 1; gap: 20px; margin-bottom: 15px; flex-wrap: wrap; }
+.detail-left, .detail-right { flex: 1 1 340px; display: flex; flex-direction: column; gap: 15px; min-width: 340px;}
 #char-detail-header { text-align: center; }
 #char-detail-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
 #char-detail-stats span { background-color: #333; padding: 5px; border-radius: 3px; }
@@ -225,6 +228,10 @@ input, select {
     display: block;
     margin-bottom: 4px;
     font-size: 14px;
+}
+
+#result-exp-bars .exp-bar-fill {
+    transition: width 1s ease-out;
 }
 
 /* Delete Button Style */
