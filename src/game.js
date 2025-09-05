@@ -549,7 +549,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateHubUI() {
         updateExpeditionsUI(); // Update expedition status
         const container = document.getElementById('party-status-hub');
-        container.innerHTML = '<h3>戦闘メンバー (クリックで詳細)</h3>';
+        container.innerHTML = '<h3>戦闘メンバー (クリックで詳細)</h3><div id="party-member-grid"></div>';
+        const gridContainer = document.getElementById('party-member-grid');
+
         getActivePartyMembers().forEach(p => {
             const pStats = getTotalStats(p);
             const hpPercent = pStats.maxHp > 0 ? (p.hp / pStats.maxHp) * 100 : 0;
@@ -572,7 +574,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
             memberDiv.onclick = () => openCharacterDetailScreen(p.id);
-            container.appendChild(memberDiv);
+            gridContainer.appendChild(memberDiv);
         });
     }
 
@@ -742,6 +744,15 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         for (const key in windows) {
             windows[key].classList.toggle('hidden', key !== mode);
+        }
+
+        // When returning to the main command window, ensure buttons are correctly enabled.
+        if (mode === 'command') {
+            const actor = gameState.battle.activeCharacter;
+            document.querySelectorAll('#command-window button').forEach(btn => btn.disabled = false);
+            if (actor && actor.statusAilments.some(s => s.type === STATUS_AILMENTS.SILENCE.id)) {
+                document.querySelector('button[data-command="skill"]').disabled = true;
+            }
         }
     }
 
@@ -1000,7 +1011,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             // Monster turn
             showBattleCommandUI(null);
-            await sleep(1000);
+            await sleep(1200);
             await enemyTurn();
             gameState.battle.turnIndex = (gameState.battle.turnIndex + 1) % gameState.battle.turnOrder.length;
             nextTurn(); // Proceed to next turn
@@ -1147,7 +1158,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateBattleUI();
         }
 
-        await sleep(500);
+        await sleep(800);
 
         applyEndOfTurnEffects(actor);
         updateBattleUI(); // Update UI again after effects like poison
