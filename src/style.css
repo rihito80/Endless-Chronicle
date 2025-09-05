@@ -107,8 +107,8 @@ input, select {
 }
 #party-status-battle { width: 50%; padding: 10px; border-right: 1px solid #555; overflow-y: auto; }
 #command-container { width: 50%; padding: 10px; position: relative; }
-#command-window, .sub-window { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; height: 100%; }
-.sub-window.hidden { display: none; }
+#command-window, .sub-window { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+#command-window.hidden, .sub-window.hidden { display: none; }
 .sub-window p { grid-column: 1 / -1; text-align: center; margin: 0; }
 .sub-window .back-to-command { grid-column: 1 / -1; }
 
@@ -163,6 +163,9 @@ input, select {
 .log-damage { color: #ff8a65; } /* Orange-Red */
 .log-heal { color: #a5d6a7; } /* Light Green */
 .log-info { color: #90a4ae; } /* Blue Grey */
+.log-critical { color: #ffeb3b; } /* Yellow */
+.log-resist { color: #b0bec5; } /* Blue Grey Light */
+.weakness-info { color: #ffadad; font-size: 12px; }
 
 
 #char-detail-owned-skills .item-list-entry {
