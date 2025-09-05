@@ -93,7 +93,7 @@ input, select {
     background: rgba(0,0,0,0.2);
     border-radius: 5px;
 }
-.monster-info { text-align: center; padding: 10px; border-radius: 5px; transition: all 0.2s; }
+.monster-info { position: relative; text-align: center; padding: 10px; border-radius: 5px; transition: all 0.2s; }
 .monster-info.targetable { cursor: pointer; background-color: rgba(255, 255, 0, 0.3); box-shadow: 0 0 10px yellow; }
 .monster-info.defeated { opacity: 0.5; }
 
@@ -128,7 +128,7 @@ input, select {
 }
 .hub-menu { display: flex; flex-wrap: wrap; justify-content: center; }
 
-.party-member { margin-bottom: 10px; font-size: 14px; padding: 5px; border-radius: 5px; transition: all 0.2s; }
+.party-member { position: relative; margin-bottom: 10px; font-size: 14px; padding: 5px; border-radius: 5px; transition: all 0.2s; }
 #party-status-hub .party-member { cursor: pointer; }
 #party-status-hub .party-member:hover { background-color: #444; }
 .party-member.active-turn { background-color: rgba(255, 255, 0, 0.2); }
