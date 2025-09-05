@@ -48,12 +48,62 @@ document.addEventListener('DOMContentLoaded', () => {
         'コウモリ': { name: 'コウモリ', hp: 30, str: 12, vit: 6, int: 5, mnd: 5, agi: 20, exp: 8, drop: null },
         'オーク': { name: 'オーク', hp: 80, str: 25, vit: 15, int: 5, mnd: 8, agi: 10, exp: 25, drop: 'てつのやり' },
         'スケルトン': { name: 'スケルトン', hp: 60, str: 20, vit: 20, int: 5, mnd: 10, agi: 15, exp: 20, drop: 'どうのつるぎ' },
+        'リザードマン': { name: 'リザードマン', hp: 120, str: 35, vit: 25, int: 10, mnd: 15, agi: 25, exp: 50, drop: 'かわのよろい' },
+        'メイジ': { name: 'メイジ', hp: 70, str: 15, vit: 18, int: 30, mnd: 25, agi: 18, exp: 45, drop: null },
+        'ゴーレム': { name: 'ゴーレム', hp: 200, str: 45, vit: 50, int: 5, mnd: 20, agi: 5, exp: 80, drop: 'てつのたて' },
+        'ワイバーン': { name: 'ワイバーン', hp: 350, str: 60, vit: 40, int: 25, mnd: 30, agi: 50, exp: 200, drop: null },
     };
 
     const DUNGEON_MASTER_DATA = {
-        '始まりの草原': { name: '始まりの草原', monsters: ['スライム', 'コウモリ'], depth: 3 },
-        'ゴブリンの洞窟': { name: 'ゴブリンの洞窟', monsters: ['ゴブリン', 'コウモリ'], depth: 5 },
-        '廃墟の砦': { name: '廃墟の砦', monsters: ['オーク', 'スケルトン', 'ゴブリン'], depth: 7 },
+        '始まりの草原': {
+            name: '始まりの草原', depth: 3,
+            encounterGroups: {
+                '1-2': [ // 1-2階
+                    { monsters: ['スライム'], weight: 5 },
+                    { monsters: ['スライム', 'スライム'], weight: 3 },
+                    { monsters: ['コウモリ'], weight: 4 },
+                ],
+                '3-3': [ // 3階
+                    { monsters: ['スライム', 'コウモリ'], weight: 1 },
+                    { monsters: ['ゴブリン'], weight: 5 },
+                ],
+            }
+        },
+        'ゴブリンの洞窟': {
+            name: 'ゴブリンの洞窟', depth: 5,
+            encounterGroups: {
+                '1-3': [
+                    { monsters: ['ゴブリン'], weight: 3 },
+                    { monsters: ['ゴブリン', 'コウモリ'], weight: 5 },
+                    { monsters: ['ゴブリン', 'ゴブリン'], weight: 2 },
+                ],
+                '4-5': [
+                    { monsters: ['ゴブリン', 'ゴブリン', 'コウモリ'], weight: 3 },
+                    { monsters: ['オーク'], weight: 4 },
+                    { monsters: ['スケルトン'], weight: 3 },
+                ],
+            }
+        },
+        '廃墟の砦': {
+            name: '廃墟の砦', depth: 10,
+            encounterGroups: {
+                '1-4': [
+                    { monsters: ['オーク'], weight: 3 },
+                    { monsters: ['スケルトン', 'スケルトン'], weight: 4 },
+                    { monsters: ['オーク', 'ゴブリン'], weight: 3 },
+                ],
+                '5-7': [
+                    { monsters: ['リザードマン'], weight: 5 },
+                    { monsters: ['オーク', 'スケルトン', 'コウモリ'], weight: 3 },
+                    { monsters: ['メイジ'], weight: 2 },
+                ],
+                '8-10': [
+                    { monsters: ['リザードマン', 'メイジ'], weight: 4 },
+                    { monsters: ['ゴーレム'], weight: 3 },
+                    { monsters: ['ワイバーン'], weight: 1 },
+                ]
+            }
+        },
     };
 
     // ========================================================================
@@ -319,24 +369,61 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function startNextBattle() {
         const activeParty = getActivePartyMembers();
-        const monsterName = gameState.dungeon.monsters[Math.floor(Math.random() * gameState.dungeon.monsters.length)];
-        const monsterData = JSON.parse(JSON.stringify(MONSTER_MASTER_DATA[monsterName]));
-        const monster = {
-            ...monsterData, id: `monster${Date.now()}`, maxHp: monsterData.hp,
-            stats: { str: monsterData.str, vit: monsterData.vit, int: monsterData.int, mnd: monsterData.mnd, agi: monsterData.agi },
-            permanentBonus: {}
-        };
+        const { currentFloor, encounterGroups } = gameState.dungeon;
 
+        // 1. 現在の階層に合ったエンカウントリストを取得
+        let possibleGroups = [];
+        for (const rangeKey in encounterGroups) {
+            const [min, max] = rangeKey.split('-').map(Number);
+            if (currentFloor >= min && currentFloor <= max) {
+                possibleGroups = encounterGroups[rangeKey];
+                break;
+            }
+        }
+
+        if (possibleGroups.length === 0) {
+            console.error(`エンカウントグループがフロア ${currentFloor} に見つかりません。`);
+            // フォールバックとして、最初のグループを使用
+            possibleGroups = encounterGroups[Object.keys(encounterGroups)[0]];
+        }
+
+        // 2. 重み付きランダムでエンカウントグループを決定
+        const totalWeight = possibleGroups.reduce((sum, group) => sum + group.weight, 0);
+        let randomWeight = Math.random() * totalWeight;
+        let chosenGroup = possibleGroups[possibleGroups.length - 1]; // デフォルトは最後のグループ
+
+        for (const group of possibleGroups) {
+            randomWeight -= group.weight;
+            if (randomWeight <= 0) {
+                chosenGroup = group;
+                break;
+            }
+        }
+
+        // 3. 選択されたグループのモンスターを生成
+        const monsterInstances = chosenGroup.monsters.map((monsterName, index) => {
+            const monsterData = JSON.parse(JSON.stringify(MONSTER_MASTER_DATA[monsterName]));
+            return {
+                ...monsterData,
+                id: `monster${Date.now()}${index}`,
+                maxHp: monsterData.hp,
+                stats: { str: monsterData.str, vit: monsterData.vit, int: monsterData.int, mnd: monsterData.mnd, agi: monsterData.agi },
+                permanentBonus: {}
+            };
+        });
+
+        // 4. バトル状態を初期化
         gameState.battle = {
-            monsters: [monster],
-            turnOrder: [...activeParty, monster].sort((a,b) => getTotalStats(b).agi - getTotalStats(a).agi),
+            monsters: monsterInstances,
+            turnOrder: [...activeParty, ...monsterInstances].sort((a, b) => getTotalStats(b).agi - getTotalStats(a).agi),
             turnIndex: 0,
             activeCharacter: null,
             action: null,
         };
 
         document.getElementById('battle-log').innerHTML = '';
-        logMessage(`${monster.name} があらわれた！`, 'battle');
+        const monsterNames = monsterInstances.map(m => m.name).join(' と ');
+        logMessage(`${monsterNames} があらわれた！`, 'battle');
         showScreen('battle-screen');
         nextTurn();
     }
