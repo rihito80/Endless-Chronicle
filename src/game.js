@@ -1464,10 +1464,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const list = document.getElementById('dungeon-list');
             list.innerHTML = '';
             for(const key in DUNGEON_MASTER_DATA) {
+                const dungeon = DUNGEON_MASTER_DATA[key];
                 const li = document.createElement('li');
                 const button = document.createElement('button');
-                button.textContent = `${DUNGEON_MASTER_DATA[key].name} (全${DUNGEON_MASTER_DATA[key].depth}階)`;
-                button.onclick = () => enterDungeon(DUNGEON_MASTER_DATA[key]);
+                button.textContent = `${dungeon.name} (全${dungeon.depth}階) - 推奨Lv: ${dungeon.recommendedLevel}`;
+                button.onclick = () => enterDungeon(dungeon);
                 li.appendChild(button);
                 list.appendChild(li);
             }
