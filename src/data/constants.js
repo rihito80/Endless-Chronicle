@@ -19,4 +19,5 @@ const STATUS_AILMENTS = {
     POISON: { id: 'poison', name: '毒', icon: '☠️' },
     PARALYSIS: { id: 'paralysis', name: '麻痺', icon: '⚡' },
     SILENCE: { id: 'silence', name: '沈黙', icon: '🤫' },
+    STUN: { id: 'stun', name: '気絶', icon: '💫' },
 };
