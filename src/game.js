@@ -117,7 +117,23 @@ document.addEventListener('DOMContentLoaded', () => {
             total[stat] = Math.round(baseStats[stat] * (multipliers[stat] || 1.0));
         }
 
-        // 7. バフ・デバフによるボーナス (最終値に乗算)
+        // 7. 装備による固定値ボーナス（乗算後）
+        if (character.equipment) {
+            Object.values(character.equipment).forEach(itemName => {
+                if (itemName) {
+                    const itemData = ITEM_MASTER_DATA[itemName];
+                    if (itemData && itemData.specialEffects) {
+                        itemData.specialEffects.forEach(effect => {
+                            if (effect.effect === 'stat_bonus_flat' && effect.stat && total.hasOwnProperty(effect.stat)) {
+                                total[effect.stat] += effect.value;
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        // 8. バフ・デバフによるボーナス (最終値に乗算)
         if (character.buffs) {
             character.buffs.forEach(buffInstance => {
                 const buffData = BUFF_DEBUFF_MASTER_DATA[buffInstance.id];
@@ -135,18 +151,44 @@ document.addEventListener('DOMContentLoaded', () => {
         return Math.round(baseDamage * (1 + (Math.random() * 0.1 - 0.05)));
     }
     function calculateMagicalDamage(attacker, defender, skill) {
-        let multiplier = ELEMENT_RELATIONSHIPS.NORMAL;
-        const defenderMaster = MONSTER_MASTER_DATA[defender.name] || {};
+        // 1. Determine base multiplier from monster/character elemental affinity
+        let multiplier = ELEMENT_RELATIONSHIPS.NORMAL; // Should be 1.0
+        const defenderMaster = MONSTER_MASTER_DATA[defender.name] || {}; // For monsters
         if (skill.element) {
             if (defenderMaster.elementalWeaknesses?.includes(skill.element)) {
-                multiplier = ELEMENT_RELATIONSHIPS.WEAK;
+                multiplier = ELEMENT_RELATIONSHIPS.WEAK; // Should be > 1.0
             } else if (defenderMaster.elementalResistances?.includes(skill.element)) {
-                multiplier = ELEMENT_RELATIONSHIPS.RESIST;
+                multiplier = ELEMENT_RELATIONSHIPS.RESIST; // Should be < 1.0
             }
         }
 
+        // 2. Apply resistance from equipment (for player characters)
+        let resistanceFromEquipment = 0;
+        if (defender.equipment && skill.element) { // Check if defender is a player character and skill has an element
+            Object.values(defender.equipment).forEach(itemName => {
+                if (itemName) {
+                    const itemData = ITEM_MASTER_DATA[itemName];
+                    if (itemData && itemData.specialEffects) {
+                        itemData.specialEffects.forEach(effect => {
+                            if (effect.effect === 'elemental_resistance' && effect.element === skill.element) {
+                                resistanceFromEquipment += effect.value; // Add up resistance values (e.g., 0.15 + 0.10)
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        // 3. Calculate final multiplier
+        // Equipment resistance reduces the damage taken by a percentage.
+        const finalMultiplier = multiplier * (1 - resistanceFromEquipment);
+
         const baseDamage = Math.max(1, (getTotalStats(attacker).int * 2.5 * skill.power) - getTotalStats(defender).mnd);
-        const finalDamage = Math.round(baseDamage * multiplier * (1 + (Math.random() * 0.1 - 0.05)));
+        // Ensure damage doesn't become negative (healing)
+        const finalDamage = Math.round(Math.max(0, baseDamage * finalMultiplier) * (1 + (Math.random() * 0.1 - 0.05)));
+
+        // The returned multiplier is used for the log message ("効果は抜群だ！").
+        // It should reflect the weakness/resistance, not the equipment reduction. So, returning the original `multiplier` is correct.
         return { damage: finalDamage, multiplier: multiplier };
     }
     function calculateHealAmount(caster, skill) {
@@ -668,7 +710,34 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
 
-        // 3. 期限切れの効果を削除
+        // 3. 装備によるリジェネ効果
+        if (character.equipment) {
+            let hpRegen = 0;
+            let mpRegen = 0;
+            Object.values(character.equipment).forEach(itemName => {
+                if (itemName) {
+                    const itemData = ITEM_MASTER_DATA[itemName];
+                    if (itemData && itemData.specialEffects) {
+                        itemData.specialEffects.forEach(effect => {
+                            if (effect.effect === 'hp_regen') hpRegen += effect.value;
+                            if (effect.effect === 'mp_regen') mpRegen += effect.value;
+                        });
+                    }
+                }
+            });
+            if (hpRegen > 0) {
+                const totalStats = getTotalStats(character);
+                character.hp = Math.min(totalStats.maxHp, character.hp + hpRegen);
+                effectMessages.push({ message: `${character.name}の装備が輝き、HPが${hpRegen}回復した。`, className: 'log-heal' });
+            }
+            if (mpRegen > 0) {
+                const totalStats = getTotalStats(character);
+                character.mp = Math.min(totalStats.maxMp, character.mp + mpRegen);
+                effectMessages.push({ message: `${character.name}の装備が輝き、MPが${mpRegen}回復した。`, className: 'log-heal' });
+            }
+        }
+
+        // 4. 期限切れの効果を削除
         if (ailmentsToRemove.length > 0) {
             character.statusAilments = character.statusAilments.filter(a => !ailmentsToRemove.includes(a.type));
         }
@@ -749,10 +818,32 @@ document.addEventListener('DOMContentLoaded', () => {
         if (targets.length > 0) {
             switch(action.type) {
                 case 'attack':
-                    const pDamage = calculatePhysicalDamage(actor, targets[0]);
-                    targets[0].hp = Math.max(0, targets[0].hp - pDamage);
-                    message = `${actor.name} の攻撃！ ${targets[0].name} に ${pDamage} のダメージ！`;
+                    const target = targets[0];
+                    const pDamage = calculatePhysicalDamage(actor, target);
+                    target.hp = Math.max(0, target.hp - pDamage);
+                    message = `${actor.name} の攻撃！ ${target.name} に ${pDamage} のダメージ！`;
                     className = 'log-damage';
+
+                    // 攻撃ヒット時の追加効果
+                    if (actor.equipment && actor.equipment.weapon) {
+                        const weaponData = ITEM_MASTER_DATA[actor.equipment.weapon];
+                        if (weaponData && weaponData.specialEffects) {
+                            weaponData.specialEffects.forEach(effect => {
+                                if (effect.effect === 'on_hit_effect' && effect.type === 'inflict_status') {
+                                    if (Math.random() < effect.chance) {
+                                        // Prevent duplicate ailments
+                                        if (!target.statusAilments.some(a => a.type === effect.status)) {
+                                            const ailmentInfo = Object.values(STATUS_AILMENTS).find(a => a.id === effect.status);
+                                            if (ailmentInfo) {
+                                                target.statusAilments.push({ type: ailmentInfo.id, turns: ailmentInfo.turns });
+                                                message += ` ${target.name}は${ailmentInfo.name}になった！`;
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    }
                     break;
                 case 'skill':
                     actor.mp -= action.skill.mp;
@@ -1340,7 +1431,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function startGachaRecruitment() {
         // Create a temporary character. The name will be set later.
-        const jobKeys = Object.keys(JOB_MASTER_DATA);
+        const jobKeys = Object.keys(JOB_MASTER_DATA).filter(jobName => JOB_MASTER_DATA[jobName].tier === 1);
         const randomJob = jobKeys[Math.floor(Math.random() * jobKeys.length)];
         gameState.gachaRecruit = createCharacter('（まだ仲間になっていない）', randomJob);
 
@@ -1650,6 +1741,43 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
+    function openHelpScreen() {
+        const container = document.getElementById('help-race-info');
+        container.innerHTML = ''; // Clear previous content
+
+        const statNameMap = { maxHp: '最大HP', maxMp: '最大MP', str: '力', vit: '体力', int: '知力', mnd: '精神', agi: '速さ', luk: '運' };
+
+        for (const raceKey in RACE_MASTER_DATA) {
+            const race = RACE_MASTER_DATA[raceKey];
+            const raceDiv = document.createElement('div');
+            raceDiv.className = 'item-list-entry'; // Reuse existing style
+            raceDiv.style.flexDirection = 'column';
+            raceDiv.style.alignItems = 'flex-start';
+            raceDiv.style.marginBottom = '10px';
+
+
+            let statsHtml = '';
+            if (race.stats && Object.keys(race.stats).length > 0) {
+                statsHtml = Object.entries(race.stats).map(([stat, value]) => {
+                    const sign = value > 0 ? '+' : '';
+                    const displayValue = Math.round(value * 100);
+                    const statName = statNameMap[stat] || stat.toUpperCase();
+                    const colorClass = value > 0 ? 'log-heal' : 'log-damage';
+                    return `<span class="${colorClass}" style="margin-right: 10px;">${statName}: ${sign}${displayValue}%</span>`;
+                }).join('');
+            }
+
+            raceDiv.innerHTML = `
+                <strong style="font-size: 1.1em;">${race.name}</strong>
+                <p style="font-size: 0.9em; margin: 4px 0;">${race.desc}</p>
+                <div style="font-size: 0.9em;">${statsHtml || '補正なし'}</div>
+            `;
+            container.appendChild(raceDiv);
+        }
+
+        showScreen('help-screen');
+    }
+
     // ========================================================================
     // 8. イベントリスナー
     // ========================================================================
@@ -1659,10 +1787,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const jobSelect = document.getElementById('char-job');
         jobSelect.innerHTML = ''; // Clear existing options
         for (const jobName in JOB_MASTER_DATA) {
-            const option = document.createElement('option');
-            option.value = jobName;
-            option.textContent = jobName;
-            jobSelect.appendChild(option);
+            if (JOB_MASTER_DATA[jobName].tier === 1) {
+                const option = document.createElement('option');
+                option.value = jobName;
+                option.textContent = jobName;
+                jobSelect.appendChild(option);
+            }
         }
 
         // バトルコマンドUIが正しく隠れるように、起動時にクラスを追加する
@@ -1798,7 +1928,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('job-change-options').classList.add('hidden');
         });
         document.getElementById('go-to-reincarnation-btn').addEventListener('click', openReincarnationScreen);
-        document.getElementById('go-to-help-btn').addEventListener('click', () => showScreen('help-screen'));
+        document.getElementById('go-to-help-btn').addEventListener('click', openHelpScreen);
         document.getElementById('cancel-reincarnation-btn').addEventListener('click', () => {
             document.getElementById('reincarnation-options').classList.add('hidden');
         });
