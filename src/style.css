@@ -149,7 +149,26 @@ input, select {
 .item-list { flex-grow: 1; overflow-y: auto; border: 1px solid #555; border-radius: 5px; background: rgba(0,0,0,0.2); padding: 5px; }
 .item-list-entry { background-color: #333; padding: 8px; margin-bottom: 5px; border-radius: 3px; display: flex; justify-content: space-between; align-items: center; }
 .item-list-entry button { padding: 5px 10px; font-size: 12px; }
-.item-list-entry .skill-desc { font-size: 12px; opacity: 0.7; }
+.item-list-entry .skill-desc { font-size: 12px; opacity: 0.7; margin-top: 4px; }
+
+/* Log Colors */
+.log-window p { margin: 0 0 5px 0; transition: color 0.3s; }
+.log-levelup { color: #81c784; font-weight: bold; } /* Green */
+.log-item { color: #64b5f6; } /* Blue */
+.log-win { color: #ffd54f; font-weight: bold; text-shadow: 0 0 5px #ffc107; } /* Gold */
+.log-lose { color: #e57373; font-weight: bold; } /* Red */
+.log-damage { color: #ff8a65; } /* Orange-Red */
+.log-heal { color: #a5d6a7; } /* Light Green */
+.log-info { color: #90a4ae; } /* Blue Grey */
+
+
+#char-detail-owned-skills .item-list-entry {
+    flex-direction: column;
+    align-items: flex-start;
+}
+#char-detail-owned-skills .skill-desc {
+    padding-left: 10px;
+}
 
 .character-select-list { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; }
 .stat-allocator { display: flex; justify-content: space-between; align-items: center; width: 200px; margin: 5px 0; }
