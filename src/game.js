@@ -1145,7 +1145,57 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
                 }
                 case 'item': {
-                    // ... (item logic remains mostly the same)
+                    const item = action.item;
+                    // アイテムを消費
+                    if (gameState.inventory[item.name]) {
+                        gameState.inventory[item.name]--;
+                        if (gameState.inventory[item.name] <= 0) {
+                            delete gameState.inventory[item.name];
+                        }
+                    }
+
+                    message = `${actor.name} は ${item.name} を使った！`;
+                    className = 'log-info'; // デフォルトのクラス
+
+                    targets.forEach(target => {
+                        // アイテム効果の適用
+                        switch (item.effect) {
+                            case 'heal_hp': {
+                                const healAmount = item.value;
+                                target.hp = Math.min(getTotalStats(target).maxHp, target.hp + healAmount);
+                                message += ` ${target.name}のHPが${healAmount}回復。`;
+                                className = 'log-heal';
+                                break;
+                            }
+                            case 'cure_poison': {
+                                const ailmentIndex = target.statusAilments.findIndex(a => a.type === STATUS_AILMENTS.POISON.id);
+                                if (ailmentIndex > -1) {
+                                    target.statusAilments.splice(ailmentIndex, 1);
+                                    message += ` ${target.name}の${STATUS_AILMENTS.POISON.name}が治った。`;
+                                } else {
+                                    message += ' しかし、効果がなかった。';
+                                }
+                                break;
+                            }
+                            case 'heal_full': {
+                                target.hp = getTotalStats(target).maxHp;
+                                target.mp = getTotalStats(target).maxMp;
+                                message += ` ${target.name}のHPとMPが全回復した！`;
+                                className = 'log-heal';
+                                break;
+                            }
+                            case 'cure_all_ailments': {
+                                if (target.statusAilments.length > 0) {
+                                    target.statusAilments = [];
+                                    message += ` ${target.name}の状態異常がすべて回復した！`;
+                                } else {
+                                    message += ' しかし、効果がなかった。';
+                                }
+                                className = 'log-heal';
+                                break;
+                            }
+                        }
+                    });
                     break;
                 }
                 case 'defend': {
@@ -1476,8 +1526,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const boostValue = item.value;
             if (character.permanentBonus.hasOwnProperty(statToBoost)) {
                 character.permanentBonus[statToBoost] += boostValue;
-                if (statToBoost === 'hp') character.hp += boostValue;
-                if (statToBoost === 'mp') character.mp += boostValue;
+                // HPやMPが永続的に上昇した場合、現在値も最大値まで回復させる
+                if (statToBoost === 'hp') {
+                    character.hp = getTotalStats(character).maxHp;
+                }
+                if (statToBoost === 'mp') {
+                    character.mp = getTotalStats(character).maxMp;
+                }
                 effectApplied = true;
             }
         } else if (item.effect === 'stat_boost_all') {

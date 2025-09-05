@@ -4,17 +4,20 @@ const ITEM_MASTER_DATA = {
     'どくけしそう': { name: 'どくけしそう', type: 'consume', rarity: 'COMMON', effect: 'cure_poison', value: 0, target: 'single_ally', desc: '味方単体の毒状態を回復する。', buyPrice: 15, sellPrice: 7 },
     'せいすい': { name: 'せいすい', type: 'consume', rarity: 'UNCOMMON', effect: 'purify', value: 0, target: 'single_ally', desc: '聖なる力で清められた水。アンデッドに有効。(効果未実装)', buyPrice: 30, sellPrice: 15 },
     'エリクサー': { name: 'エリクサー', type: 'consume', rarity: 'EPIC', effect: 'heal_full', value: 9999, target: 'single_ally', desc: '味方単体のHPとMPを完全に回復する。', buyPrice: 1000, sellPrice: 500 },
+    '万能薬': { name: '万能薬', type: 'consume', rarity: 'RARE', effect: 'cure_all_ailments', target: 'single_ally', desc: 'あらゆる状態異常を回復する奇跡の薬。', buyPrice: 200, sellPrice: 100 },
 
     // Special Effect & Job-specific Items
     'けいけんちのゆびわ': { name: 'けいけんちのゆびわ', type: 'accessory', rarity: 'RARE', specialEffects: [{ effect: 'exp_gain_up', value: 0.1 }], desc: '獲得経験値が10%増加する指輪。', buyPrice: 2000, sellPrice: 1000 },
     'ゴールドリング': { name: 'ゴールドリング', type: 'accessory', rarity: 'RARE', specialEffects: [{ effect: 'gold_gain_up', value: 0.15 }], desc: '獲得ゴールドが15%増加する指輪。', buyPrice: 2000, sellPrice: 1000 },
-    '炎のアミュレット': { name: '炎のアミュレット', type: 'accessory', rarity: 'UNCOMMON', specialEffects: [{ effect: 'elemental_resistance', element: 'fire', value: 0.25 }], desc: '火属性のダメージを25%軽減する。', buyPrice: 1500, sellPrice: 750 },
-    '氷のアミュレット': { name: '氷のアミュレット', type: 'accessory', rarity: 'UNCOMMON', specialEffects: [{ effect: 'elemental_resistance', element: 'ice', value: 0.25 }], desc: '氷属性のダメージを25%軽減する。', buyPrice: 1500, sellPrice: 750 },
-    '雷のアミュレット': { name: '雷のアミュレット', type: 'accessory', rarity: 'UNCOMMON', specialEffects: [{ effect: 'elemental_resistance', element: 'thunder', value: 0.25 }], desc: '雷属性のダメージを25%軽減する。', buyPrice: 1500, sellPrice: 750 },
+    '炎のアミュレット': { name: '炎のアミュレット', type: 'accessory', rarity: 'UNCOMMON', specialEffects: [{ effect: 'elemental_resistance', element: ELEMENTS.FIRE, value: 0.25 }], desc: '火属性のダメージを25%軽減する。', buyPrice: 1500, sellPrice: 750 },
+    '氷のアミュレット': { name: '氷のアミュレット', type: 'accessory', rarity: 'UNCOMMON', specialEffects: [{ effect: 'elemental_resistance', element: ELEMENTS.ICE, value: 0.25 }], desc: '氷属性のダメージを25%軽減する。', buyPrice: 1500, sellPrice: 750 },
+    '雷のアミュレット': { name: '雷のアミュレット', type: 'accessory', rarity: 'UNCOMMON', specialEffects: [{ effect: 'elemental_resistance', element: ELEMENTS.THUNDER, value: 0.25 }], desc: '雷属性のダメージを25%軽減する。', buyPrice: 1500, sellPrice: 750 },
+    '守りの指輪': { name: '守りの指輪', type: 'accessory', rarity: 'UNCOMMON', desc: '装備者の防御力と精神力を少し高める指輪。', specialEffects: [{ effect: 'stat_bonus_flat', stat: 'vit', value: 3 }, { effect: 'stat_bonus_flat', stat: 'mnd', value: 3 }], buyPrice: 2500, sellPrice: 1250 },
 
     // --- Equipment ---
     // Weapons
     'ブロードソード': { name: 'ブロードソード', type: 'weapon', rarity: 'COMMON', desc: '一般的な幅広の剣。', buyPrice: 150, sellPrice: 75 },
+    'バトルアックス': { name: 'バトルアックス', type: 'weapon', rarity: 'UNCOMMON', desc: '重い刃が強力な一撃を生み出す戦斧。', specialEffects: [{ effect: 'stat_bonus_flat', stat: 'str', value: 8 }], jobRestriction: ['戦士', 'パラディン'], buyPrice: 1500, sellPrice: 750 },
     'ポイズンダガー': {
         name: 'ポイズンダガー', type: 'weapon', rarity: 'UNCOMMON',
         desc: '毒が塗られた短剣。攻撃時に毒を与えることがある。',
@@ -51,6 +54,7 @@ const ITEM_MASTER_DATA = {
 
     // Hands
     'レザーグローブ': { name: 'レザーグローブ', type: 'hands', rarity: 'COMMON', desc: '革製の基本的な手袋。', buyPrice: 80, sellPrice: 40 },
+    'ミスリルシールド': { name: 'ミスリルシールド', type: 'hands', rarity: 'RARE', desc: '伝説の金属ミスリルで作られた軽い盾。', specialEffects: [{ effect: 'stat_bonus_flat', stat: 'vit', value: 10 }, { effect: 'elemental_resistance', element: ELEMENTS.DARK, value: 0.20 }], jobRestriction: ['戦士', '僧侶', 'パラディン'], buyPrice: 6000, sellPrice: 3000 },
     '盗賊の篭手': {
         name: '盗賊の篭手', type: 'hands', rarity: 'UNCOMMON',
         desc: 'アイテムを盗む確率が上がると言われている。(効果未実装)',
