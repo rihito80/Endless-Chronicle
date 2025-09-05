@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
         '戦士': { hp: 'A', mp: 'E', str: 'A', vit: 'B', int: 'E', mnd: 'D', agi: 'C', luk: 'C', skills: ['スラッシュ'] },
         '魔法使い': { hp: 'D', mp: 'A', str: 'E', vit: 'D', int: 'A', mnd: 'B', agi: 'C', luk: 'C', skills: ['ファイアボール'] },
         '僧侶': { hp: 'C', mp: 'B', str: 'D', vit: 'C', int: 'B', mnd: 'A', agi: 'D', luk: 'B', skills: ['ヒール'] },
+        '盗賊': { hp: 'C', mp: 'D', str: 'C', vit: 'D', int: 'D', mnd: 'C', agi: 'A', luk: 'S', skills: ['スティール'] },
+        '狩人': { hp: 'B', mp: 'C', str: 'B', vit: 'C', int: 'D', mnd: 'C', agi: 'B', luk: 'D', skills: ['ダブルショット'] },
     };
     const GROWTH_RANK = { S: 6, A: 5, B: 4, C: 3, D: 2, E: 1 };
 
@@ -18,6 +20,10 @@ document.addEventListener('DOMContentLoaded', () => {
         'パワースマッシュ': { name: 'パワースマッシュ', mp: 10, type: 'physical_attack', power: 1.8, target: 'single_enemy', desc: '敵単体に物理大ダメージ' },
         'エリアヒール': { name: 'エリアヒール', mp: 25, type: 'heal', power: 0.8, target: 'all_allies', desc: '味方全体のHPを回復' },
         'サンダー': { name: 'サンダー', mp: 15, type: 'magical_attack', power: 1.5, target: 'single_enemy', desc: '敵単体に魔法中ダメージ' },
+        'スティール': { name: 'スティール', mp: 2, type: 'support', power: 0, target: 'single_enemy', desc: '敵単体からアイテムを盗む(未実装)' },
+        'ダブルショット': { name: 'ダブルショット', mp: 12, type: 'physical_attack', power: 0.8, target: 'double_attack', desc: '敵単体に2回物理ダメージ' },
+        'ポイズンアロー': { name: 'ポイズンアロー', mp: 8, type: 'physical_attack', power: 1.0, target: 'single_enemy', desc: '敵単体を毒状態にする(未実装)' },
+        'ファストステップ': { name: 'ファストステップ', mp: 8, type: 'support', power: 1.2, target: 'self', desc: '自身のAGIを上昇させる(未実装)' },
     };
 
     const SKILL_TREE_DATA = {
@@ -29,6 +35,12 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         '魔法使い': {
             'サンダー': { cost: 2, requiredLevel: 8 },
+        },
+        '盗賊': {
+            'ファストステップ': { cost: 2, requiredLevel: 6 },
+        },
+        '狩人': {
+            'ポイズンアロー': { cost: 3, requiredLevel: 7 },
         }
     };
 
@@ -215,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             character.hp = getTotalStats(character).maxHp;
             character.mp = getTotalStats(character).maxMp;
-            log.push(`${character.name} はレベル ${character.level} に上がった！ (SP+1)`);
+            log.push({ message: `${character.name} はレベル ${character.level} に上がった！ (SP+1)`, className: 'log-levelup' });
         }
         return log;
     }
@@ -295,11 +307,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // 4. UI更新
     // ========================================================================
 
-    function logMessage(message, screen, clear = false) {
+    function logMessage(message, screen, options = {}) {
+        const { clear = false, className = '' } = options;
         const logWindow = document.getElementById(`${screen}-log`);
         if(logWindow) {
            if (clear) logWindow.innerHTML = '';
-           logWindow.innerHTML += `<p>${message}</p>`;
+           const p = document.createElement('p');
+           p.innerHTML = message; // innerHTML to allow for bold tags etc.
+           if(className) p.classList.add(className);
+           logWindow.appendChild(p);
            logWindow.scrollTop = logWindow.scrollHeight;
         }
     }
@@ -363,7 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ...dungeonData,
             currentFloor: 1,
         };
-        logMessage(`「${gameState.dungeon.name}」に突入！`, 'hub', true);
+        logMessage(`「${gameState.dungeon.name}」に突入！`, 'hub', { clear: true, className: 'log-info' });
         startNextBattle();
     }
 
@@ -423,7 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('battle-log').innerHTML = '';
         const monsterNames = monsterInstances.map(m => m.name).join(' と ');
-        logMessage(`${monsterNames} があらわれた！`, 'battle');
+        logMessage(`${monsterNames} があらわれた！`, 'battle', { className: 'log-info' });
         showScreen('battle-screen');
         nextTurn();
     }
@@ -462,12 +478,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         action.skill.target === 'all_allies' ? getActivePartyMembers().filter(p => p.hp > 0) :
                         action.skill.target === 'all_enemies' ? gameState.battle.monsters.filter(m => m.hp > 0) : [];
 
+        let className = '';
         if (targets.length > 0) {
             switch(action.type) {
                 case 'attack':
                     const pDamage = calculatePhysicalDamage(actor, targets[0]);
                     targets[0].hp = Math.max(0, targets[0].hp - pDamage);
                     message = `${actor.name} の攻撃！ ${targets[0].name} に ${pDamage} のダメージ！`;
+                    className = 'log-damage';
                     break;
                 case 'skill':
                     actor.mp -= action.skill.mp;
@@ -477,12 +495,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             const heal = calculateHealAmount(actor, action.skill);
                             target.hp = Math.min(getTotalStats(target).maxHp, target.hp + heal);
                             message += ` ${target.name}のHPが${heal}回復。`;
+                            className = 'log-heal';
                         } else { // Attack skills
                             const damage = action.skill.type === 'physical_attack'
                                 ? Math.round(calculatePhysicalDamage(actor, target) * action.skill.power)
                                 : calculateMagicalDamage(actor, target, action.skill);
                             target.hp = Math.max(0, target.hp - damage);
                             message += ` ${target.name}に${damage}のダメージ！`;
+                            className = 'log-damage';
                         }
                     });
                     break;
@@ -491,13 +511,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         targets[0].hp = Math.min(getTotalStats(targets[0]).maxHp, targets[0].hp + action.item.value);
                         message = `${actor.name} は ${action.item.name} を使った！ ${targets[0].name} のHPが ${action.item.value} 回復した！`;
                         gameState.inventory[action.item.name]--;
+                        className = 'log-heal';
                     }
                     break;
                 case 'defend':
                     message = `${actor.name} は防御している。`;
+                    className = 'log-info';
                     break;
             }
-            logMessage(message, 'battle');
+            logMessage(message, 'battle', { className });
         }
 
         gameState.battle.turnIndex = (gameState.battle.turnIndex + 1) % gameState.battle.turnOrder.length;
@@ -520,37 +542,41 @@ document.addEventListener('DOMContentLoaded', () => {
     function endBattle(isWin) {
         const resultText = document.getElementById('result-text');
         const nextBattleBtn = document.getElementById('next-battle-btn');
+        resultText.innerHTML = ''; // Clear previous results
+
         if (isWin) {
-            let expGained = 0, drops = [], log = [`勝利！`];
+            resultText.innerHTML += `<p class="log-win">勝利！</p>`;
+            let expGained = 0, drops = [];
             gameState.battle.monsters.forEach(m => {
                 expGained += m.exp;
                 if (m.drop) drops.push(m.drop);
             });
-            log.push(`${expGained} の経験値を獲得した。`);
+            resultText.innerHTML += `<p class="log-info">${expGained} の経験値を獲得した。</p>`;
 
             getActivePartyMembers().forEach(p => {
                 if (p.hp > 0) {
                     p.exp += expGained;
-                    log.push(...levelUp(p));
+                    levelUp(p).forEach(log => {
+                        resultText.innerHTML += `<p class="${log.className}">${log.message}</p>`;
+                    });
                 }
             });
 
             drops.forEach(dropName => {
                 if (dropName) {
                     gameState.inventory[dropName] = (gameState.inventory[dropName] || 0) + 1;
-                    log.push(`${dropName} を手に入れた。`);
+                    resultText.innerHTML += `<p class="log-item">${dropName} を手に入れた。</p>`;
                 }
             });
-            resultText.innerHTML = log.join('<br>');
 
             if (gameState.dungeon.currentFloor < gameState.dungeon.depth) {
                 nextBattleBtn.classList.remove('hidden');
             } else {
                 nextBattleBtn.classList.add('hidden');
-                resultText.innerHTML += `<br><strong>${gameState.dungeon.name} を踏破した！</strong>`;
+                resultText.innerHTML += `<br><p class="log-win"><strong>${gameState.dungeon.name} を踏破した！</strong></p>`;
             }
         } else {
-            resultText.innerHTML = '全滅してしまった...';
+            resultText.innerHTML = `<p class="log-lose">全滅してしまった...</p>`;
             nextBattleBtn.classList.add('hidden');
         }
         showScreen('result-screen');
@@ -583,7 +609,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const savedData = localStorage.getItem(key);
             if (savedData) {
                 gameState = JSON.parse(savedData);
-                logMessage(`スロット ${slot} からロードしました。`, 'hub', true);
+                logMessage(`スロット ${slot} からロードしました。`, 'hub', { clear: true, className: 'log-info' });
                 updateHubUI();
                 showScreen('hub-screen');
                 return true;
@@ -701,6 +727,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // 習得済みスキル
+        const ownedSkillContainer = document.getElementById('char-detail-owned-skills');
+        ownedSkillContainer.innerHTML = '';
+        if (character.skills.length > 0) {
+            character.skills.forEach(skillName => {
+                const skillData = SKILL_MASTER_DATA[skillName];
+                if (skillData) {
+                    const entryDiv = document.createElement('div');
+                    entryDiv.className = 'item-list-entry';
+                    entryDiv.innerHTML = `<div>
+                        <strong>${skillData.name}</strong> <small>(MP: ${skillData.mp})</small>
+                        <div class="skill-desc">${skillData.desc}</div>
+                    </div>`;
+                    ownedSkillContainer.appendChild(entryDiv);
+                }
+            });
+        } else {
+            ownedSkillContainer.innerHTML = '<p>習得済みのスキルはありません。</p>';
+        }
+
+
+        // スキル習得
         document.getElementById('skill-points-display').textContent = character.skillPoints;
         const skillContainer = document.getElementById('char-detail-skills');
         skillContainer.innerHTML = '';
@@ -799,7 +847,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('job-change-options').classList.remove('hidden');
         document.getElementById('execute-job-change-btn').onclick = () => {
             if(performJobChange(character, jobSelect.value)) {
-                logMessage(`${character.name} が ${jobSelect.value} に転職した！`, 'hub', true);
+                logMessage(`${character.name} が ${jobSelect.value} に転職した！`, 'hub', { clear: true, className: 'log-levelup' });
                 updateHubUI();
                 showScreen('hub-screen');
             }
@@ -936,7 +984,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('reincarnation-options').classList.remove('hidden');
         document.getElementById('execute-reincarnation-btn').onclick = () => {
             if(performReincarnation(character, pointAllocation)) {
-                logMessage(`${character.name} が転生した！`, 'hub', true);
+                logMessage(`${character.name} が転生した！`, 'hub', { clear: true, className: 'log-win' });
                 updateHubUI();
                 showScreen('hub-screen');
             }

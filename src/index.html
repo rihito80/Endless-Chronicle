@@ -23,6 +23,8 @@
                 <option value="戦士">戦士</option>
                 <option value="魔法使い">魔法使い</option>
                 <option value="僧侶">僧侶</option>
+                <option value="盗賊">盗賊</option>
+                <option value="狩人">狩人</option>
             </select>
             <button id="create-character-btn">作成</button>
             <button id="cancel-creation-btn" class="hidden">キャンセル</button>
@@ -58,7 +60,11 @@
                         <div id="char-detail-inventory" class="item-list"></div>
                     </div>
                     <div class="skill-section">
-                        <h3>スキル (SP: <span id="skill-points-display"></span>)</h3>
+                        <h3>習得済みスキル</h3>
+                        <div id="char-detail-owned-skills" class="item-list"></div>
+                    </div>
+                    <div class="skill-section">
+                        <h3>スキル習得 (SP: <span id="skill-points-display"></span>)</h3>
                         <div id="char-detail-skills" class="item-list"></div>
                     </div>
                 </div>
