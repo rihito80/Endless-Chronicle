@@ -22,6 +22,11 @@ const SKILL_MASTER_DATA = {
     'シールドバッシュ': { name: 'シールドバッシュ', mp: 15, type: 'physical_attack', power: 1.2, target: 'single_enemy', inflicts: [{ type: STATUS_AILMENTS.STUN.id, chance: 0.3, turns: 1 }], desc: '敵単体に物理ダメージを与え、確率で気絶させる' },
     'メガヒール': { name: 'メガヒール', mp: 20, type: 'heal', power: 2.5, target: 'single_ally', desc: '味方単体のHPを大きく回復' },
     'ジャッジメント': { name: 'ジャッジメント', mp: 30, type: 'magical_attack', power: 2.5, target: 'single_enemy', element: ELEMENTS.HOLY, desc: '敵単体に聖属性の特大魔法ダメージ' },
+
+    // High Level Skills
+    'ギガスラッシュ': { name: 'ギガスラッシュ', mp: 40, type: 'physical_attack', power: 2.2, target: 'all_enemies', desc: '敵全体に強力な物理ダメージ' },
+    'メテオストライク': { name: 'メテオストライク', mp: 55, type: 'magical_attack', power: 2.0, target: 'all_enemies', element: ELEMENTS.FIRE, desc: '敵全体に究極の火属性魔法ダメージ' },
+    'レインアロー': { name: 'レインアロー', mp: 38, type: 'physical_attack', power: 1.5, target: 'all_enemies', desc: '敵全体に矢の雨を降らせる' },
 };
 
 const SKILL_TREE_DATA = {
@@ -31,20 +36,26 @@ const SKILL_TREE_DATA = {
         'VIT+10': { type: 'STAT_BOOST', stat: 'vit', value: 10, cost: 2, requiredLevel: 8 },
         'サイレンスブレード': { type: 'SKILL', skillName: 'サイレンスブレード', cost: 3, requiredLevel: 12},
         'STR+15': { type: 'STAT_BOOST', stat: 'str', value: 15, cost: 4, requiredLevel: 20 },
+        'VIT+20': { type: 'STAT_BOOST', stat: 'vit', value: 20, cost: 4, requiredLevel: 30 },
+        'ギガスラッシュ': { type: 'SKILL', skillName: 'ギガスラッシュ', cost: 5, requiredLevel: 45 },
     },
     '魔法使い': {
         'INT+5': { type: 'STAT_BOOST', stat: 'int', value: 5, cost: 1, requiredLevel: 3 },
         'サンダー': { type: 'SKILL', skillName: 'サンダー', cost: 2, requiredLevel: 8 },
-        'アイスストーム': { type: 'SKILL', skillName: 'アイスストーム', cost: 3, requiredLevel: 15 },
         'MP+30': { type: 'STAT_BOOST', stat: 'maxMp', value: 30, cost: 2, requiredLevel: 10 },
+        'アイスストーム': { type: 'SKILL', skillName: 'アイスストーム', cost: 3, requiredLevel: 15 },
         'サンダーボルト': { type: 'SKILL', skillName: 'サンダーボルト', cost: 4, requiredLevel: 22 },
+        'INT+20': { type: 'STAT_BOOST', stat: 'int', value: 20, cost: 4, requiredLevel: 32 },
+        'メテオストライク': { type: 'SKILL', skillName: 'メテオストライク', cost: 5, requiredLevel: 48 },
     },
     '僧侶': {
         'MND+5': { type: 'STAT_BOOST', stat: 'mnd', value: 5, cost: 1, requiredLevel: 3 },
-        'エリアヒール': { type: 'SKILL', skillName: 'エリアヒール', cost: 3, requiredLevel: 10 },
         'VIT+8': { type: 'STAT_BOOST', stat: 'vit', value: 8, cost: 2, requiredLevel: 7 },
-        'ホーリーライト': { type: 'SKILL', skillName: 'ホーリーライト', cost: 3, requiredLevel: 14 },
         'MP+20': { type: 'STAT_BOOST', stat: 'maxMp', value: 20, cost: 2, requiredLevel: 9 },
+        'エリアヒール': { type: 'SKILL', skillName: 'エリアヒール', cost: 3, requiredLevel: 10 },
+        'ホーリーライト': { type: 'SKILL', skillName: 'ホーリーライト', cost: 3, requiredLevel: 14 },
+        'MND+20': { type: 'STAT_BOOST', stat: 'mnd', value: 20, cost: 4, requiredLevel: 28 },
+        '最大HP+100': { type: 'STAT_BOOST', stat: 'maxHp', value: 100, cost: 5, requiredLevel: 42 },
     },
     '盗賊': {
         'AGI+5': { type: 'STAT_BOOST', stat: 'agi', value: 5, cost: 1, requiredLevel: 3 },
@@ -52,6 +63,8 @@ const SKILL_TREE_DATA = {
         'LUK+10': { type: 'STAT_BOOST', stat: 'luk', value: 10, cost: 2, requiredLevel: 8 },
         'ベノムエッジ': { type: 'SKILL', skillName: 'ベノムエッジ', cost: 3, requiredLevel: 11 },
         'AGI+10': { type: 'STAT_BOOST', stat: 'agi', value: 10, cost: 3, requiredLevel: 15 },
+        'LUK+20': { type: 'STAT_BOOST', stat: 'luk', value: 20, cost: 4, requiredLevel: 25 },
+        'LUK+30': { type: 'STAT_BOOST', stat: 'luk', value: 30, cost: 5, requiredLevel: 40 },
     },
     '狩人': {
         'STR+3': { type: 'STAT_BOOST', stat: 'str', value: 3, cost: 1, requiredLevel: 2 },
@@ -59,17 +72,23 @@ const SKILL_TREE_DATA = {
         'ポイズンアロー': { type: 'SKILL', skillName: 'ポイズンアロー', cost: 3, requiredLevel: 7 },
         'パラライズショット': { type: 'SKILL', skillName: 'パラライズショット', cost: 3, requiredLevel: 13 },
         'LUK+15': { type: 'STAT_BOOST', stat: 'luk', value: 15, cost: 4, requiredLevel: 18 },
+        'AGI+15': { type: 'STAT_BOOST', stat: 'agi', value: 15, cost: 4, requiredLevel: 28 },
+        'レインアロー': { type: 'SKILL', skillName: 'レインアロー', cost: 5, requiredLevel: 44 },
     },
     'パラディン': {
         'VIT+10': { type: 'STAT_BOOST', stat: 'vit', value: 10, cost: 2, requiredLevel: 5 },
         'ヒール': { type: 'SKILL', skillName: 'ヒール', cost: 2, requiredLevel: 8 },
         'STR+10': { type: 'STAT_BOOST', stat: 'str', value: 10, cost: 3, requiredLevel: 15 },
         'HP+50': { type: 'STAT_BOOST', stat: 'maxHp', value: 50, cost: 4, requiredLevel: 25 },
+        'MND+15': { type: 'STAT_BOOST', stat: 'mnd', value: 15, cost: 4, requiredLevel: 35 },
+        'VIT+25': { type: 'STAT_BOOST', stat: 'vit', value: 25, cost: 5, requiredLevel: 46 },
     },
     '賢者': {
         'INT+10': { type: 'STAT_BOOST', stat: 'int', value: 10, cost: 2, requiredLevel: 5 },
         'エリアヒール': { type: 'SKILL', skillName: 'エリアヒール', cost: 3, requiredLevel: 12 },
         'MP+50': { type: 'STAT_BOOST', stat: 'maxMp', value: 50, cost: 3, requiredLevel: 18 },
         'ジャッジメント': { type: 'SKILL', skillName: 'ジャッジメント', cost: 4, requiredLevel: 25 },
+        'INT+15': { type: 'STAT_BOOST', stat: 'int', value: 15, cost: 4, requiredLevel: 33 },
+        'INT+25': { type: 'STAT_BOOST', stat: 'int', value: 25, cost: 5, requiredLevel: 41 },
     }
 };
