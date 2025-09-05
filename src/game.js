@@ -560,23 +560,98 @@ document.addEventListener('DOMContentLoaded', () => {
     // 6. データ保存・ロード
     // ========================================================================
 
-    function saveGame() {
+    const SAVE_KEY_PREFIX = 'endlessChronicleSave_';
+    const MAX_SAVE_SLOTS = 5;
+
+    function saveGame(slot) {
         try {
-            localStorage.setItem('endlessChronicleSave', JSON.stringify(gameState));
-            logMessage('ゲームデータを保存しました。', 'hub', true);
-        } catch(e) { console.error(e); logMessage('データの保存に失敗しました。', 'hub', true); }
+            gameState.savedAt = new Date().toISOString();
+            const key = `${SAVE_KEY_PREFIX}${slot}`;
+            localStorage.setItem(key, JSON.stringify(gameState));
+            console.log(`Game saved to slot ${slot}`);
+            return true;
+        } catch (e) {
+            console.error(e);
+            alert('セーブに失敗しました。');
+            return false;
+        }
     }
 
-    function loadGame() {
-        const savedData = localStorage.getItem('endlessChronicleSave');
-        if (savedData) {
-            gameState = JSON.parse(savedData);
-            logMessage('ゲームデータをロードしました。', 'hub', true);
-            updateHubUI();
-            showScreen('hub-screen');
+    function loadGame(slot) {
+        try {
+            const key = `${SAVE_KEY_PREFIX}${slot}`;
+            const savedData = localStorage.getItem(key);
+            if (savedData) {
+                gameState = JSON.parse(savedData);
+                logMessage(`スロット ${slot} からロードしました。`, 'hub', true);
+                updateHubUI();
+                showScreen('hub-screen');
+                return true;
+            }
+            return false;
+        } catch (e) {
+            console.error(e);
+            alert(`スロット ${slot} のロードに失敗しました。`);
+            return false;
+        }
+    }
+
+    function deleteGame(slot) {
+        const key = `${SAVE_KEY_PREFIX}${slot}`;
+        if (confirm(`本当にスロット ${slot} のデータを削除しますか？`)) {
+            localStorage.removeItem(key);
+            console.log(`Save slot ${slot} deleted.`);
             return true;
         }
         return false;
+    }
+
+    function exportGame(slot) {
+        const key = `${SAVE_KEY_PREFIX}${slot}`;
+        const data = localStorage.getItem(key);
+        if (!data) {
+            alert('このスロットにはエクスポートするデータがありません。');
+            return;
+        }
+        try {
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `endlessChronicle_save_slot${slot}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error(e);
+            alert('エクスポートに失敗しました。');
+        }
+    }
+
+    function importGame(file, slot) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                // 簡単なバリデーション
+                const importedState = JSON.parse(e.target.result);
+                if (importedState.roster && importedState.party) {
+                    if (confirm(`スロット ${slot} にインポートしますか？既存のデータは上書きされます。`)) {
+                        const key = `${SAVE_KEY_PREFIX}${slot}`;
+                        localStorage.setItem(key, e.target.result);
+                        alert(`スロット ${slot} にデータをインポートしました。`);
+                        openSaveLoadScreen(gameState.currentScreen === 'title' ? 'load' : 'save');
+                    }
+                } else {
+                    alert('無効なセーブファイルです。');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('ファイルの読み込みに失敗しました。');
+            }
+        };
+        reader.readAsText(file);
     }
 
     // ========================================================================
@@ -747,6 +822,101 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     let pointAllocation = {};
+    function openSaveLoadScreen(mode) { // 'save' or 'load'
+        const title = document.getElementById('save-load-title');
+        const container = document.getElementById('save-slots-list');
+        const importBtn = document.getElementById('import-game-btn');
+        container.innerHTML = '';
+        title.textContent = mode === 'save' ? 'セーブする場所を選択' : 'ロードするデータを選択';
+        importBtn.style.display = mode === 'load' ? 'inline-block' : 'none';
+
+        for (let i = 1; i <= MAX_SAVE_SLOTS; i++) {
+            const key = `${SAVE_KEY_PREFIX}${i}`;
+            const savedData = localStorage.getItem(key);
+            const slotDiv = document.createElement('div');
+            slotDiv.className = 'save-slot';
+
+            let slotInfo = `<div class="slot-number">スロット ${i}</div>`;
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'slot-buttons';
+
+            if (savedData) {
+                try {
+                    const data = JSON.parse(savedData);
+                    const saveDate = new Date(data.savedAt).toLocaleString('ja-JP');
+                    const leader = data.roster.find(char => char.id === data.party[0]);
+                    slotInfo += `<div class="slot-details">
+                                    <span>${saveDate}</span>
+                                    <span>${leader ? leader.name + ' Lv.' + leader.level : 'データなし'}</span>
+                                 </div>`;
+
+                    const loadBtn = document.createElement('button');
+                    loadBtn.textContent = 'ロード';
+                    loadBtn.onclick = () => loadGame(i);
+                    buttonContainer.appendChild(loadBtn);
+
+                    if (mode === 'save') {
+                        const saveBtn = document.createElement('button');
+                        saveBtn.textContent = '上書き';
+                        saveBtn.onclick = () => {
+                            if (confirm(`スロット ${i} に上書きしますか？`)) {
+                                if(saveGame(i)) alert(`スロット ${i} にセーブしました。`);
+                                openSaveLoadScreen(mode);
+                            }
+                        };
+                        buttonContainer.appendChild(saveBtn);
+                    }
+
+                    const exportBtn = document.createElement('button');
+                    exportBtn.textContent = 'エクスポート';
+                    exportBtn.onclick = () => exportGame(i);
+                    buttonContainer.appendChild(exportBtn);
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = '削除';
+                    deleteBtn.onclick = () => {
+                        if (deleteGame(i)) {
+                            openSaveLoadScreen(mode);
+                        }
+                    };
+                    buttonContainer.appendChild(deleteBtn);
+
+                } catch (e) {
+                    console.error(`Error parsing save data for slot ${i}:`, e);
+                    slotInfo += `<div class="slot-details">データが壊れています</div>`;
+                    localStorage.removeItem(key); // 壊れたデータを削除
+                }
+            } else {
+                slotInfo += `<div class="slot-details">空きスロット</div>`;
+                if (mode === 'save') {
+                    const saveBtn = document.createElement('button');
+                    saveBtn.textContent = 'ここにセーブ';
+                    saveBtn.onclick = () => {
+                        if(saveGame(i)) alert(`スロット ${i} にセーブしました。`);
+                        openSaveLoadScreen(mode);
+                    };
+                    buttonContainer.appendChild(saveBtn);
+                }
+                 const importBtnForSlot = document.createElement('button');
+                 importBtnForSlot.textContent = 'インポート';
+                 importBtnForSlot.onclick = () => {
+                    const fileInput = document.getElementById('import-file-input');
+                    fileInput.onchange = (e) => {
+                       importGame(e.target.files[0], i);
+                       fileInput.value = ''; // Reset for next import
+                    };
+                    fileInput.click();
+                 };
+                 buttonContainer.appendChild(importBtnForSlot);
+            }
+
+            slotDiv.innerHTML = slotInfo;
+            slotDiv.appendChild(buttonContainer);
+            container.appendChild(slotDiv);
+        }
+        showScreen('save-load-screen');
+    }
+
     function selectCharacterForReincarnation(character) {
         document.getElementById('reincarnation-info').textContent = `${character.name} の永続ボーナスを割り振ってください。転生するとレベル1に戻ります。`;
         const allocator = document.getElementById('reincarnation-point-allocator');
@@ -784,9 +954,40 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('cancel-creation-btn').classList.add('hidden');
             showScreen('character-creation-screen');
         });
-        document.getElementById('load-game').addEventListener('click', () => {
-            if (!loadGame()) { alert('セーブデータがありません。'); }
+
+        // データ管理画面を開く
+        document.getElementById('open-load-screen').addEventListener('click', () => openSaveLoadScreen('load'));
+        document.getElementById('open-save-screen').addEventListener('click', () => openSaveLoadScreen('save'));
+
+        // データ管理画面のボタン
+        document.getElementById('back-from-save-load-screen').addEventListener('click', () => {
+            // タイトル画面から来たか、拠点から来たかで戻る場所を変える
+            const previousScreen = (gameState.roster.length === 0) ? 'title-screen' : 'hub-screen';
+            showScreen(previousScreen);
         });
+
+        document.getElementById('import-game-btn').addEventListener('click', () => {
+            // 空きスロットを探してインポートを試みる
+            let firstEmptySlot = -1;
+            for (let i = 1; i <= MAX_SAVE_SLOTS; i++) {
+                if (!localStorage.getItem(`${SAVE_KEY_PREFIX}${i}`)) {
+                    firstEmptySlot = i;
+                    break;
+                }
+            }
+
+            if (firstEmptySlot !== -1) {
+                const fileInput = document.getElementById('import-file-input');
+                fileInput.onchange = (e) => {
+                   importGame(e.target.files[0], firstEmptySlot);
+                   fileInput.value = '';
+                };
+                fileInput.click();
+            } else {
+                alert('インポートするための空きスロットがありません。');
+            }
+        });
+
 
         document.getElementById('create-character-btn').addEventListener('click', () => {
             const name = document.getElementById('char-name').value;
@@ -814,8 +1015,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 showScreen('hub-screen');
             });
         });
-
-        document.getElementById('save-game-btn').addEventListener('click', saveGame);
 
         document.getElementById('go-to-dungeon-btn').addEventListener('click', () => {
             const list = document.getElementById('dungeon-list');

@@ -12,7 +12,7 @@
         <div id="title-screen" class="screen">
             <h1>Endless Chronicle</h1>
             <button id="start-new-game">ゲーム開始</button>
-            <button id="load-game">続きから</button>
+            <button id="open-load-screen">続きから</button>
         </div>
 
         <!-- キャラクター作成画面 -->
@@ -37,7 +37,7 @@
                 <button id="go-to-party-management-btn">パーティ編成</button>
                 <button id="go-to-temple-btn">転職神殿</button>
                 <button id="go-to-reincarnation-btn">転生の祭壇</button>
-                <button id="save-game-btn">セーブ</button>
+                <button id="open-save-screen">セーブ</button>
             </div>
              <div id="hub-log" class="log-window"></div>
         </div>
@@ -153,6 +153,19 @@
                 <button id="cancel-reincarnation-btn" class="cancel-btn">やめる</button>
             </div>
              <button class="back-to-hub">拠点へ戻る</button>
+        </div>
+
+        <!-- データ管理画面 -->
+        <div id="save-load-screen" class="screen hidden">
+            <h2 id="save-load-title">データ管理</h2>
+            <div id="save-slots-list" class="save-slots-container">
+                <!-- Save slots will be dynamically inserted here -->
+            </div>
+            <div class="hub-menu">
+                <input type="file" id="import-file-input" accept=".json" style="display: none;">
+                <button id="import-game-btn">インポート</button>
+                <button id="back-from-save-load-screen">戻る</button>
+            </div>
         </div>
     </div>
     <script src="game.js"></script>
