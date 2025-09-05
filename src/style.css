@@ -179,6 +179,46 @@ input, select {
 .character-select-list { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; }
 .stat-allocator { display: flex; justify-content: space-between; align-items: center; width: 200px; margin: 5px 0; }
 
+/* Stat Bar Styles */
+.stat-bar-container {
+    width: 100%;
+    height: 18px;
+    background-color: #1a1a1a;
+    border: 1px solid #555;
+    border-radius: 4px;
+    position: relative;
+    margin-top: 4px;
+    box-sizing: border-box;
+}
+
+.stat-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease-in-out;
+}
+
+.stat-bar-text {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    text-shadow: 1px 1px 1px #000;
+    font-size: 11px;
+    line-height: 16px;
+}
+
+.hp-bar-fill {
+    background-color: #e53935; /* Red */
+}
+
+.mp-bar-fill {
+    background-color: #1e88e5; /* Blue */
+}
+
+
 /* EXP Bar Styles */
 #char-exp-section {
     margin-top: 10px;
@@ -302,4 +342,37 @@ input, select {
 
 .animate-attack {
   animation: attack-lunge 0.3s ease-in-out;
+}
+
+/* Dungeon Clear Animation */
+#dungeon-clear-message {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 48px;
+    font-weight: bold;
+    color: #ffd700; /* Gold */
+    text-shadow: 0 0 10px #fff, 0 0 20px #ffc107, 0 0 35px #ffc107;
+    z-index: 10;
+    pointer-events: none; /* So it doesn't block buttons below */
+}
+
+#dungeon-clear-message.animate {
+    animation: dungeon-clear-animation 2s forwards;
+}
+
+@keyframes dungeon-clear-animation {
+    0% {
+        transform: translate(-50%, -50%) scale(0.5);
+        opacity: 0;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
 }
