@@ -817,7 +817,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (targets.length > 0) {
             switch(action.type) {
-                case 'attack':
+                case 'attack': {
                     const target = targets[0];
                     const pDamage = calculatePhysicalDamage(actor, target);
                     target.hp = Math.max(0, target.hp - pDamage);
@@ -845,7 +845,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
                     break;
-                case 'skill':
+                }
+                case 'skill': {
                     actor.mp -= action.skill.mp;
                     message = `${actor.name} は ${action.skill.name} を使った！`;
 
@@ -920,7 +921,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                     }
                     break;
-                case 'item':
+                }
+                case 'item': {
                     const item = action.item;
                     const target = targets[0];
                     message = `${actor.name} は ${item.name} を使った！`;
@@ -965,10 +967,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         className = 'log-info';
                     }
                     break;
-                case 'defend':
+                }
+                case 'defend': {
                     message = `${actor.name} は防御している。`;
                     className = 'log-info';
                     break;
+                }
             }
             logMessage(message, 'battle', { className });
         }
