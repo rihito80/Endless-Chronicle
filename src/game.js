@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
             learnedSkillTreeNodes: [], // スキルツリーでの習得済みノードを記録
             equipment: { weapon: null, head: null, torso: null, hands: null, feet: null, accessory: null },
             jobHistory: [{ job: job, level: 1 }],
+            jobProgress: {}, // 職業ごとの進捗を保存
             permanentBonus: { hp: 0, mp: 0, str: 0, vit: 0, int: 0, mnd: 0, agi: 0, luk: 0 },
             reincarnationCount: 0,
             statusAilments: [],
@@ -188,23 +189,57 @@ document.addEventListener('DOMContentLoaded', () => {
             return false;
         }
 
-        const bonus = Math.floor(character.level / 10);
-        const oldJobMainStats = Object.entries(JOB_MASTER_DATA[character.job])
-            .filter(([, val]) => val === 'A' || val === 'S')
-            .map(([key]) => key);
+        // 1. Save current job progress
+        character.jobProgress[character.job] = {
+            level: character.level,
+            exp: character.exp,
+            skills: [...character.skills],
+            learnedSkillTreeNodes: [...character.learnedSkillTreeNodes],
+            stats: {...character.stats}, // Save base stats too
+            maxHp: character.maxHp,
+            maxMp: character.maxMp,
+        };
 
-        oldJobMainStats.forEach(stat => {
-            if(character.permanentBonus[stat] !== undefined) character.permanentBonus[stat] += bonus;
-        });
+        // Add to job history for requirement checking, if it's not already there at a lower level
+        const historyIndex = character.jobHistory.findIndex(h => h.job === character.job);
+        if (historyIndex > -1) {
+            if (character.level > character.jobHistory[historyIndex].level) {
+                character.jobHistory[historyIndex].level = character.level;
+            }
+        } else {
+            character.jobHistory.push({ job: character.job, level: character.level });
+        }
 
-        character.jobHistory.push({ job: character.job, level: character.level });
-        character.level = 1; character.exp = 0; character.job = newJob;
 
-        const baseChar = createCharacter("temp", newJob);
-        character.maxHp = baseChar.maxHp; character.maxMp = baseChar.maxMp;
-        character.stats = { ...baseChar.stats };
-        character.hp = getTotalStats(character).maxHp; character.mp = getTotalStats(character).maxMp;
-        character.skills = [...JOB_MASTER_DATA[newJob].skills];
+        // 2. Load new job progress or initialize it
+        character.job = newJob;
+        const savedProgress = character.jobProgress[newJob];
+
+        if (savedProgress) {
+            // Load from progress
+            character.level = savedProgress.level;
+            character.exp = savedProgress.exp;
+            character.skills = [...savedProgress.skills];
+            character.learnedSkillTreeNodes = [...savedProgress.learnedSkillTreeNodes];
+            character.stats = {...savedProgress.stats};
+            character.maxHp = savedProgress.maxHp;
+            character.maxMp = savedProgress.maxMp;
+        } else {
+            // Initialize new job
+            const baseChar = createCharacter("temp", newJob);
+            character.level = 1;
+            character.exp = 0;
+            character.skills = [...baseChar.skills];
+            character.learnedSkillTreeNodes = [];
+            character.stats = { ...baseChar.stats };
+            character.maxHp = baseChar.maxHp;
+            character.maxMp = baseChar.maxMp;
+        }
+
+        // 3. Refresh HP/MP
+        character.hp = getTotalStats(character).maxHp;
+        character.mp = getTotalStats(character).maxMp;
+
         return true;
     }
 
@@ -1001,6 +1036,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!char.buffs) {
                         char.buffs = [];
                     }
+                    if (!char.jobProgress) {
+                        char.jobProgress = {};
+                        // Save the current job's state into the new structure
+                        // Note: We can't reconstruct history, but we can preserve the current state.
+                        char.jobProgress[char.job] = {
+                            level: char.level,
+                            exp: char.exp,
+                            skills: [...char.skills],
+                            learnedSkillTreeNodes: [...char.learnedSkillTreeNodes],
+                            stats: {...char.stats},
+                            maxHp: char.maxHp,
+                            maxMp: char.maxMp,
+                        };
+                    }
                     if (!char.jobHistory) {
                         char.jobHistory = [{ job: char.job, level: char.level }];
                     }
@@ -1354,19 +1403,40 @@ document.addEventListener('DOMContentLoaded', () => {
         showScreen('temple-screen');
     }
 
+    function getJobMaxLevels(character) {
+        const maxLevels = {};
+
+        // 1. Check saved progress in jobProgress
+        for (const jobName in character.jobProgress) {
+            const level = character.jobProgress[jobName].level;
+            if (!maxLevels[jobName] || level > maxLevels[jobName]) {
+                maxLevels[jobName] = level;
+            }
+        }
+
+        // 2. Check current job's level
+        if (!maxLevels[character.job] || character.level > maxLevels[character.job]) {
+            maxLevels[character.job] = character.level;
+        }
+
+        // 3. Check jobHistory for backward compatibility with older saves
+        if (character.jobHistory) {
+            character.jobHistory.forEach(record => {
+                if (!maxLevels[record.job] || record.level > maxLevels[record.job]) {
+                    maxLevels[record.job] = record.level;
+                }
+            });
+        }
+        return maxLevels;
+    }
+
     function checkJobRequirements(character, jobData) {
         if (!jobData.requirements) {
             // Tier 1 jobs are available if the character is level 10 or higher.
             return character.level >= 10;
         }
 
-        const jobHistory = [...character.jobHistory, { job: character.job, level: character.level }];
-        const maxLevels = {};
-        jobHistory.forEach(record => {
-            if (!maxLevels[record.job] || record.level > maxLevels[record.job]) {
-                maxLevels[record.job] = record.level;
-            }
-        });
+        const maxLevels = getJobMaxLevels(character);
 
         for (const requiredJob in jobData.requirements) {
             const requiredLevel = jobData.requirements[requiredJob];
@@ -1384,8 +1454,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const availableJobs = Object.keys(JOB_MASTER_DATA).filter(jobName => {
             if (jobName === character.job) return false;
-            // 既にその職をマスターしている（jobHistoryにいる）場合は選択肢に出さない
-            if (character.jobHistory.some(h => h.job === jobName)) return false;
 
             const jobData = JOB_MASTER_DATA[jobName];
             return checkJobRequirements(character, jobData);
