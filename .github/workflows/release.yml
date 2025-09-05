@@ -1,0 +1,90 @@
+# GitHub Actionsのワークフロー名を定義します
+name: Create Release and Upload Zip
+
+# このワークフローが実行されるトリガーを設定します
+on:
+  # mainブランチへのpushイベントをトリガーにします
+  push:
+    branches:
+      - main
+    # srcフォルダ内のファイルが変更された場合のみワークフローを実行します
+    paths:
+      - 'src/**'
+
+# 実行されるジョブを定義します
+jobs:
+  build-and-release:
+    # ジョブを実行する仮想環境を指定します
+    runs-on: ubuntu-latest
+    # GITHUB_TOKENに必要な権限を付与します
+    permissions:
+      contents: write
+      
+    # ジョブ内のステップを定義します
+    steps:
+      # 1. リポジトリのコードをチェックアウトします (コミット履歴全体を取得)
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # タグ間の差分を取得するために全履歴をフェッチします
+          fetch-depth: 0
+
+      # 2. 変数を設定します (日付、ファイル名など)
+      - name: Set up variables
+        run: |
+          echo "RELEASE_DATE=$(date +'%Y%m%d')" >> $GITHUB_ENV
+          echo "ZIP_FILE_NAME=${{ github.event.repository.name }}-$(date +'%Y%m%d')-${{ github.run_number }}.zip" >> $GITHUB_ENV
+
+      # 3. 'src' フォルダの中身をzip形式で圧縮します
+      - name: Zip src folder contents
+        working-directory: ./src
+        run: zip -r ../${{ env.ZIP_FILE_NAME }} .
+
+      # 4. リリースノートの内容（変更ログ）を生成します
+      - name: Generate release notes
+        run: |
+          # 直近のタグを取得します。タグがなければ空文字を返します
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -z "$LATEST_TAG" ]; then
+            # タグがない場合（初回リリース）は、すべてのコミットログを取得します
+            COMMIT_LOGS=$(git log --pretty=format:"- %s (%h)")
+          else
+            # 前回のタグから現在までのコミットログを取得します
+            COMMIT_LOGS=$(git log --pretty=format:"- %s (%h)" $LATEST_TAG..HEAD)
+          fi
+          
+          # 生成したコミットログを環境変数に設定します
+          # 複数行の文字列を扱うための特殊な構文です
+          {
+            echo "RELEASE_BODY<<EOF"
+            echo "## What's Changed"
+            echo ""
+            echo "$COMMIT_LOGS"
+            echo "EOF"
+          } >> $GITHUB_ENV
+
+      # 5. 新しいリリースを作成します
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ env.RELEASE_DATE }}-${{ github.run_number }}
+          release_name: Release ${{ env.RELEASE_DATE }}-${{ github.run_number }}
+          # 自動生成したリリースノートを説明文に設定します
+          body: ${{ env.RELEASE_BODY }}
+          draft: false
+          prerelease: false
+
+      # 6. 作成したリリースにzipファイルをアセットとしてアップロードします
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./${{ env.ZIP_FILE_NAME }}
+          asset_name: ${{ env.ZIP_FILE_NAME }}
+          asset_content_type: application/zip
