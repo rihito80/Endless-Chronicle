@@ -12,42 +12,88 @@ document.addEventListener('DOMContentLoaded', () => {
         '狩人': { hp: 'B', mp: 'C', str: 'B', vit: 'C', int: 'D', mnd: 'C', agi: 'B', luk: 'D', skills: ['ダブルショット'] },
     };
     const GROWTH_RANK = { S: 6, A: 5, B: 4, C: 3, D: 2, E: 1 };
+    const ELEMENT_RELATIONSHIPS = {
+        WEAK: 1.5,
+        RESIST: 0.5,
+        NORMAL: 1.0,
+    };
+    const ELEMENTS = {
+        NONE: '無',
+        FIRE: '火',
+        ICE: '氷',
+        THUNDER: '雷',
+        HOLY: '聖',
+        DARK: '闇',
+    };
+    const STATUS_AILMENTS = {
+        POISON: { id: 'poison', name: '毒', icon: '☠️' },
+        PARALYSIS: { id: 'paralysis', name: '麻痺', icon: '⚡' },
+        SILENCE: { id: 'silence', name: '沈黙', icon: '🤫' },
+    };
 
     const SKILL_MASTER_DATA = {
         'スラッシュ': { name: 'スラッシュ', mp: 5, type: 'physical_attack', power: 1.2, target: 'single_enemy', desc: '敵単体に物理ダメージ' },
-        'ファイアボール': { name: 'ファイアボール', mp: 8, type: 'magical_attack', power: 1.0, target: 'single_enemy', desc: '敵単体に魔法ダメージ' },
+        'ファイアボール': { name: 'ファイアボール', mp: 8, type: 'magical_attack', power: 1.0, target: 'single_enemy', element: ELEMENTS.FIRE, desc: '敵単体に火属性の魔法ダメージ' },
         'ヒール': { name: 'ヒール', mp: 10, type: 'heal', power: 1.0, target: 'single_ally', desc: '味方単体のHPを回復' },
         'パワースマッシュ': { name: 'パワースマッシュ', mp: 10, type: 'physical_attack', power: 1.8, target: 'single_enemy', desc: '敵単体に物理大ダメージ' },
         'エリアヒール': { name: 'エリアヒール', mp: 25, type: 'heal', power: 0.8, target: 'all_allies', desc: '味方全体のHPを回復' },
-        'サンダー': { name: 'サンダー', mp: 15, type: 'magical_attack', power: 1.5, target: 'single_enemy', desc: '敵単体に魔法中ダメージ' },
+        'サンダー': { name: 'サンダー', mp: 15, type: 'magical_attack', power: 1.5, target: 'single_enemy', element: ELEMENTS.THUNDER, desc: '敵単体に雷属性の魔法ダメージ' },
         'スティール': { name: 'スティール', mp: 2, type: 'support', power: 0, target: 'single_enemy', desc: '敵単体からアイテムを盗む(未実装)' },
         'ダブルショット': { name: 'ダブルショット', mp: 12, type: 'physical_attack', power: 0.8, target: 'double_attack', desc: '敵単体に2回物理ダメージ' },
-        'ポイズンアロー': { name: 'ポイズンアロー', mp: 8, type: 'physical_attack', power: 1.0, target: 'single_enemy', desc: '敵単体を毒状態にする(未実装)' },
+        'ポイズンアロー': { name: 'ポイズンアロー', mp: 8, type: 'physical_attack', power: 1.0, target: 'single_enemy', inflicts: [{ type: STATUS_AILMENTS.POISON.id, chance: 0.7, turns: 3 }], desc: '敵単体を確率で毒状態にする' },
         'ファストステップ': { name: 'ファストステップ', mp: 8, type: 'support', power: 1.2, target: 'self', desc: '自身のAGIを上昇させる(未実装)' },
+
+        // 新規追加スキル
+        'アイスストーム': { name: 'アイスストーム', mp: 20, type: 'magical_attack', power: 0.8, target: 'all_enemies', element: ELEMENTS.ICE, desc: '敵全体に氷属性のダメージ' },
+        'サンダーボルト': { name: 'サンダーボルト', mp: 22, type: 'magical_attack', power: 0.7, target: 'all_enemies', element: ELEMENTS.THUNDER, desc: '敵全体に雷属性のダメージ' },
+        'ホーリーライト': { name: 'ホーリーライト', mp: 18, type: 'magical_attack', power: 1.8, target: 'single_enemy', element: ELEMENTS.HOLY, desc: '敵単体に聖属性の大ダメージ' },
+        'ベノムエッジ': { name: 'ベノムエッジ', mp: 10, type: 'physical_attack', power: 1.1, target: 'single_enemy', inflicts: [{ type: STATUS_AILMENTS.POISON.id, chance: 0.9, turns: 4 }], desc: '敵単体を高確率で毒状態にする' },
+        'パラライズショット': { name: 'パラライズショット', mp: 12, type: 'physical_attack', power: 0.9, target: 'single_enemy', inflicts: [{ type: STATUS_AILMENTS.PARALYSIS.id, chance: 0.4, turns: 2 }], desc: '敵単体を確率で麻痺させる' },
+        'サイレンスブレード': { name: 'サイレンスブレード', mp: 10, type: 'physical_attack', power: 1.0, target: 'single_enemy', inflicts: [{ type: STATUS_AILMENTS.SILENCE.id, chance: 0.5, turns: 3 }], desc: '敵単体を確率で沈黙させる' },
     };
 
     const SKILL_TREE_DATA = {
         '戦士': {
-            'パワースマッシュ': { cost: 2, requiredLevel: 5 },
-        },
-        '僧侶': {
-            'エリアヒール': { cost: 3, requiredLevel: 10 },
+            'STR+5': { type: 'STAT_BOOST', stat: 'str', value: 5, cost: 1, requiredLevel: 3 },
+            'パワースマッシュ': { type: 'SKILL', skillName: 'パワースマッシュ', cost: 2, requiredLevel: 5 },
+            'VIT+10': { type: 'STAT_BOOST', stat: 'vit', value: 10, cost: 2, requiredLevel: 8 },
+            'サイレンスブレード': { type: 'SKILL', skillName: 'サイレンスブレード', cost: 3, requiredLevel: 12},
+            'STR+15': { type: 'STAT_BOOST', stat: 'str', value: 15, cost: 4, requiredLevel: 20 },
         },
         '魔法使い': {
-            'サンダー': { cost: 2, requiredLevel: 8 },
+            'INT+5': { type: 'STAT_BOOST', stat: 'int', value: 5, cost: 1, requiredLevel: 3 },
+            'サンダー': { type: 'SKILL', skillName: 'サンダー', cost: 2, requiredLevel: 8 },
+            'アイスストーム': { type: 'SKILL', skillName: 'アイスストーム', cost: 3, requiredLevel: 15 },
+            'MP+30': { type: 'STAT_BOOST', stat: 'maxMp', value: 30, cost: 2, requiredLevel: 10 },
+            'サンダーボルト': { type: 'SKILL', skillName: 'サンダーボルト', cost: 4, requiredLevel: 22 },
+        },
+        '僧侶': {
+            'MND+5': { type: 'STAT_BOOST', stat: 'mnd', value: 5, cost: 1, requiredLevel: 3 },
+            'エリアヒール': { type: 'SKILL', skillName: 'エリアヒール', cost: 3, requiredLevel: 10 },
+            'VIT+8': { type: 'STAT_BOOST', stat: 'vit', value: 8, cost: 2, requiredLevel: 7 },
+            'ホーリーライト': { type: 'SKILL', skillName: 'ホーリーライト', cost: 3, requiredLevel: 14 },
+            'MP+20': { type: 'STAT_BOOST', stat: 'maxMp', value: 20, cost: 2, requiredLevel: 9 },
         },
         '盗賊': {
-            'ファストステップ': { cost: 2, requiredLevel: 6 },
+            'AGI+5': { type: 'STAT_BOOST', stat: 'agi', value: 5, cost: 1, requiredLevel: 3 },
+            'ファストステップ': { type: 'SKILL', skillName: 'ファストステップ', cost: 2, requiredLevel: 6 },
+            'LUK+10': { type: 'STAT_BOOST', stat: 'luk', value: 10, cost: 2, requiredLevel: 8 },
+            'ベノムエッジ': { type: 'SKILL', skillName: 'ベノムエッジ', cost: 3, requiredLevel: 11 },
+            'AGI+10': { type: 'STAT_BOOST', stat: 'agi', value: 10, cost: 3, requiredLevel: 15 },
         },
         '狩人': {
-            'ポイズンアロー': { cost: 3, requiredLevel: 7 },
+            'STR+3': { type: 'STAT_BOOST', stat: 'str', value: 3, cost: 1, requiredLevel: 2 },
+            'AGI+3': { type: 'STAT_BOOST', stat: 'agi', value: 3, cost: 1, requiredLevel: 2 },
+            'ポイズンアロー': { type: 'SKILL', skillName: 'ポイズンアロー', cost: 3, requiredLevel: 7 },
+            'パラライズショット': { type: 'SKILL', skillName: 'パラライズショット', cost: 3, requiredLevel: 13 },
+            'LUK+15': { type: 'STAT_BOOST', stat: 'luk', value: 15, cost: 4, requiredLevel: 18 },
         }
     };
 
     const ITEM_MASTER_DATA = {
         // 消費アイテム
         'やくそう': { name: 'やくそう', type: 'consume', effect: 'heal_hp', value: 30, target: 'single_ally', desc: '味方単体のHPを30回復する。', buyPrice: 10, sellPrice: 5 },
-        'どくけしそう': { name: 'どくけしそう', type: 'consume', effect: 'cure_poison', value: 0, target: 'single_ally', desc: '味方単体の毒状態を回復する。(効果未実装)', buyPrice: 15, sellPrice: 7 },
+        'どくけしそう': { name: 'どくけしそう', type: 'consume', effect: 'cure_poison', value: 0, target: 'single_ally', desc: '味方単体の毒状態を回復する。', buyPrice: 15, sellPrice: 7 },
         'せいすい': { name: 'せいすい', type: 'consume', effect: 'purify', value: 0, target: 'single_ally', desc: '聖なる力で清められた水。アンデッドに有効。(効果未実装)', buyPrice: 30, sellPrice: 15 },
         'エリクサー': { name: 'エリクサー', type: 'consume', effect: 'heal_full', value: 9999, target: 'single_ally', desc: '味方単体のHPとMPを完全に回復する。', buyPrice: 1000, sellPrice: 500 },
 
@@ -68,15 +114,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const MONSTER_MASTER_DATA = {
-        'スライム': { name: 'スライム', hp: 25, str: 10, vit: 5, int: 5, mnd: 5, agi: 8, exp: 5, drop: 'やくそう' },
+        'スライム': { name: 'スライム', hp: 25, str: 10, vit: 5, int: 5, mnd: 5, agi: 8, exp: 5, drop: 'やくそう', elementalResistances: [ELEMENTS.THUNDER] },
         'ゴブリン': { name: 'ゴブリン', hp: 40, str: 15, vit: 8, int: 5, mnd: 5, agi: 12, exp: 10, drop: 'こん棒' },
         'コウモリ': { name: 'コウモリ', hp: 30, str: 12, vit: 6, int: 5, mnd: 5, agi: 20, exp: 8, drop: null },
-        'オーク': { name: 'オーク', hp: 80, str: 25, vit: 15, int: 5, mnd: 8, agi: 10, exp: 25, drop: 'てつのやり' },
-        'スケルトン': { name: 'スケルトン', hp: 60, str: 20, vit: 20, int: 5, mnd: 10, agi: 15, exp: 20, drop: 'どうのつるぎ' },
-        'リザードマン': { name: 'リザードマン', hp: 120, str: 35, vit: 25, int: 10, mnd: 15, agi: 25, exp: 50, drop: 'かわのよろい' },
+        'オーク': { name: 'オーク', hp: 80, str: 25, vit: 15, int: 5, mnd: 8, agi: 10, exp: 25, drop: 'てつのやり', elementalWeaknesses: [ELEMENTS.FIRE] },
+        'スケルトン': { name: 'スケルトン', hp: 60, str: 20, vit: 20, int: 5, mnd: 10, agi: 15, exp: 20, drop: 'どうのつるぎ', elementalWeaknesses: [ELEMENTS.HOLY], elementalResistances: [ELEMENTS.DARK] },
+        'リザードマン': { name: 'リザードマン', hp: 120, str: 35, vit: 25, int: 10, mnd: 15, agi: 25, exp: 50, drop: 'かわのよろい', elementalWeaknesses: [ELEMENTS.ICE] },
         'メイジ': { name: 'メイジ', hp: 70, str: 15, vit: 18, int: 30, mnd: 25, agi: 18, exp: 45, drop: null },
-        'ゴーレム': { name: 'ゴーレム', hp: 200, str: 45, vit: 50, int: 5, mnd: 20, agi: 5, exp: 80, drop: 'てつのたて' },
-        'ワイバーン': { name: 'ワイバーン', hp: 350, str: 60, vit: 40, int: 25, mnd: 30, agi: 50, exp: 200, drop: null },
+        'ゴーレム': { name: 'ゴーレム', hp: 200, str: 45, vit: 50, int: 5, mnd: 20, agi: 5, exp: 80, drop: 'てつのたて', elementalResistances: [ELEMENTS.FIRE, ELEMENTS.ICE, ELEMENTS.THUNDER] },
+        'ワイバーン': { name: 'ワイバーン', hp: 350, str: 60, vit: 40, int: 25, mnd: 30, agi: 50, exp: 200, drop: null, elementalWeaknesses: [ELEMENTS.THUNDER] },
     };
 
     const DUNGEON_MASTER_DATA = {
@@ -168,10 +214,12 @@ document.addEventListener('DOMContentLoaded', () => {
             stats: { str: 10, vit: 10, int: 5, mnd: 5, agi: 7, luk: 5 },
             skillPoints: 0,
             skills: [...JOB_MASTER_DATA[job].skills],
+            learnedSkillTreeNodes: [], // スキルツリーでの習得済みノードを記録
             equipment: { weapon: null, armor: null, accessory: null },
             jobHistory: [{ job: job, level: 1 }],
             permanentBonus: { hp: 0, mp: 0, str: 0, vit: 0, int: 0, mnd: 0, agi: 0, luk: 0 },
             reincarnationCount: 0,
+            statusAilments: [],
         };
         return char;
     }
@@ -185,10 +233,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const total = { ...character.stats };
 
+        // 1. 永続ボーナス (転生)
         for (const stat in character.permanentBonus) {
             total[stat] = (total[stat] || 0) + character.permanentBonus[stat];
         }
 
+        // 2. スキルツリーによるボーナス
+        const jobSkillTree = SKILL_TREE_DATA[character.job] || {};
+        if (character.learnedSkillTreeNodes) {
+            character.learnedSkillTreeNodes.forEach(nodeKey => {
+                const node = jobSkillTree[nodeKey];
+                if (node && node.type === 'STAT_BOOST') {
+                    total[node.stat] = (total[node.stat] || 0) + node.value;
+                }
+            });
+        }
+
+
+        // 3. 装備によるボーナス
         for (const slot in character.equipment) {
             const itemName = character.equipment[slot];
             if (itemName) {
@@ -211,8 +273,19 @@ document.addEventListener('DOMContentLoaded', () => {
         return Math.round(baseDamage * (1 + (Math.random() * 0.1 - 0.05)));
     }
     function calculateMagicalDamage(attacker, defender, skill) {
+        let multiplier = ELEMENT_RELATIONSHIPS.NORMAL;
+        const defenderMaster = MONSTER_MASTER_DATA[defender.name] || {};
+        if (skill.element) {
+            if (defenderMaster.elementalWeaknesses?.includes(skill.element)) {
+                multiplier = ELEMENT_RELATIONSHIPS.WEAK;
+            } else if (defenderMaster.elementalResistances?.includes(skill.element)) {
+                multiplier = ELEMENT_RELATIONSHIPS.RESIST;
+            }
+        }
+
         const baseDamage = Math.max(1, (getTotalStats(attacker).int * 2.5 * skill.power) - getTotalStats(defender).mnd);
-        return Math.round(baseDamage * (1 + (Math.random() * 0.1 - 0.05)));
+        const finalDamage = Math.round(baseDamage * multiplier * (1 + (Math.random() * 0.1 - 0.05)));
+        return { damage: finalDamage, multiplier: multiplier };
     }
     function calculateHealAmount(caster, skill) {
         const baseHeal = getTotalStats(caster).int * 2 * skill.power;
@@ -463,8 +536,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const monsterArea = document.getElementById('monster-area');
         monsterArea.innerHTML = '';
         gameState.battle.monsters.forEach((m, index) => {
+            let statusIcons = m.statusAilments.map(s => STATUS_AILMENTS[s.type.toUpperCase()]?.icon || '').join('');
             monsterArea.innerHTML += (m.hp > 0) ?
-                `<div class="monster-info" data-index="${index}">${m.name}<br>HP: ${m.hp}/${m.maxHp}</div>` :
+                `<div class="monster-info" data-index="${index}">${m.name} ${statusIcons}<br>HP: ${m.hp}/${m.maxHp}</div>` :
                 `<div class="monster-info defeated">${m.name}<br>倒した</div>`;
         });
 
@@ -472,9 +546,10 @@ document.addEventListener('DOMContentLoaded', () => {
         partyStatus.innerHTML = '';
         getActivePartyMembers().forEach((p) => {
             const pStats = getTotalStats(p);
+            let statusIcons = p.statusAilments.map(s => STATUS_AILMENTS[s.type.toUpperCase()]?.icon || '').join('');
              partyStatus.innerHTML += `
                 <div class="party-member ${p === gameState.battle.activeCharacter ? 'active-turn' : ''}" data-id="${p.id}">
-                     <strong>${p.name}</strong> (Lv.${p.level})<br>
+                     <strong>${p.name} ${statusIcons}</strong> (Lv.${p.level})<br>
                      HP: ${p.hp}/${pStats.maxHp} | MP: ${p.mp}/${pStats.maxMp}
                 </div>`;
         });
@@ -546,7 +621,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 id: `monster${Date.now()}${index}`,
                 maxHp: monsterData.hp,
                 stats: { str: monsterData.str, vit: monsterData.vit, int: monsterData.int, mnd: monsterData.mnd, agi: monsterData.agi },
-                permanentBonus: {}
+                permanentBonus: {},
+                statusAilments: [],
             };
         });
 
@@ -566,6 +642,52 @@ document.addEventListener('DOMContentLoaded', () => {
         nextTurn();
     }
 
+    function applyEndOfTurnStatusEffects(character) {
+        let effectMessages = [];
+        const ailmentsToRemove = [];
+
+        character.statusAilments.forEach(ailment => {
+            // Poison: Take damage
+            if (ailment.type === STATUS_AILMENTS.POISON.id) {
+                const poisonDamage = Math.max(1, Math.floor(getTotalStats(character).maxHp * 0.05));
+                character.hp = Math.max(0, character.hp - poisonDamage);
+                effectMessages.push({
+                    message: `${character.name}は毒のダメージを受けた！ (${poisonDamage})`,
+                    className: 'log-damage'
+                });
+            }
+
+            // Decrement turn count
+            ailment.turns--;
+            if (ailment.turns <= 0) {
+                ailmentsToRemove.push(ailment.type);
+                const ailmentInfo = Object.values(STATUS_AILMENTS).find(a => a.id === ailment.type);
+                effectMessages.push({
+                    message: `${character.name}の${ailmentInfo.name}が治った。`,
+                    className: 'log-info'
+                });
+            }
+        });
+
+        // Remove expired ailments
+        if (ailmentsToRemove.length > 0) {
+            character.statusAilments = character.statusAilments.filter(a => !ailmentsToRemove.includes(a.type));
+        }
+
+        // Log messages and update UI
+        if (effectMessages.length > 0) {
+            setTimeout(() => {
+                effectMessages.forEach(log => logMessage(log.message, 'battle', { className: log.className }));
+                updateBattleUI();
+                 // Check for death from poison
+                if (character.hp <= 0) {
+                    logMessage(`${character.name}は力尽きた...`, 'battle', { className: 'log-lose' });
+                }
+            }, 500);
+        }
+    }
+
+
     function nextTurn() {
         if (gameState.battle.monsters.every(m => m.hp <= 0)) { endBattle(true); return; }
         if (getActivePartyMembers().every(p => p.hp <= 0)) { endBattle(false); return; }
@@ -581,9 +703,26 @@ document.addEventListener('DOMContentLoaded', () => {
         gameState.battle.activeCharacter = active;
         updateBattleUI();
 
+        // Status Ailment Check (Paralysis)
+        const isParalyzed = active.statusAilments.find(s => s.type === STATUS_AILMENTS.PARALYSIS.id);
+        if (isParalyzed && Math.random() < 0.5) {
+            logMessage(`${active.name}は体が痺れて動けない！`, 'battle', { className: 'log-info' });
+            setTimeout(() => {
+                 applyEndOfTurnStatusEffects(active);
+                 gameState.battle.turnIndex = (gameState.battle.turnIndex + 1) % gameState.battle.turnOrder.length;
+                 nextTurn();
+            }, 1000);
+            return;
+        }
+
+
         if (active.job) {
+            // Player turn
+            const isSilenced = active.statusAilments.find(s => s.type === STATUS_AILMENTS.SILENCE.id);
+            document.querySelector('button[data-command="skill"]').disabled = !!isSilenced;
             showBattleCommandUI('command');
         } else {
+            // Monster turn
             showBattleCommandUI(null);
             setTimeout(enemyTurn, 1000);
         }
@@ -594,13 +733,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const { action } = gameState.battle;
         const { actor } = action;
         let message = '';
-
-        // [修正点] ターゲットが複数か単体かによって処理を分岐
-        const targets = action.target ? [action.target] :
-                        action.skill.target === 'all_allies' ? getActivePartyMembers().filter(p => p.hp > 0) :
-                        action.skill.target === 'all_enemies' ? gameState.battle.monsters.filter(m => m.hp > 0) : [];
-
         let className = '';
+
+        const targets = action.target ? [action.target] :
+                        (action.skill && action.skill.target === 'all_allies') ? getActivePartyMembers().filter(p => p.hp > 0) :
+                        (action.skill && action.skill.target === 'all_enemies') ? gameState.battle.monsters.filter(m => m.hp > 0) :
+                        [];
+
         if (targets.length > 0) {
             switch(action.type) {
                 case 'attack':
@@ -619,21 +758,58 @@ document.addEventListener('DOMContentLoaded', () => {
                             message += ` ${target.name}のHPが${heal}回復。`;
                             className = 'log-heal';
                         } else { // Attack skills
-                            const damage = action.skill.type === 'physical_attack'
-                                ? Math.round(calculatePhysicalDamage(actor, target) * action.skill.power)
-                                : calculateMagicalDamage(actor, target, action.skill);
-                            target.hp = Math.max(0, target.hp - damage);
-                            message += ` ${target.name}に${damage}のダメージ！`;
+                            let damageResult;
+                            if (action.skill.type === 'physical_attack') {
+                                damageResult = { damage: Math.round(calculatePhysicalDamage(actor, target) * action.skill.power), multiplier: ELEMENT_RELATIONSHIPS.NORMAL };
+                            } else {
+                                damageResult = calculateMagicalDamage(actor, target, action.skill);
+                            }
+
+                            target.hp = Math.max(0, target.hp - damageResult.damage);
+                            message += ` ${target.name}に${damageResult.damage}のダメージ！`;
+
+                            if (damageResult.multiplier === ELEMENT_RELATIONSHIPS.WEAK) {
+                                message += ' <span class="log-critical">効果は抜群だ！</span>';
+                            } else if (damageResult.multiplier === ELEMENT_RELATIONSHIPS.RESIST) {
+                                message += ' <span class="log-resist">あまり効いていない...</span>';
+                            }
                             className = 'log-damage';
+                        }
+
+                        // Apply status ailments from skill
+                        if (action.skill.inflicts) {
+                            action.skill.inflicts.forEach(inflict => {
+                                if (Math.random() < inflict.chance) {
+                                    // Prevent duplicate ailments
+                                    if (!target.statusAilments.some(a => a.type === inflict.type)) {
+                                        target.statusAilments.push({ type: inflict.type, turns: inflict.turns });
+                                        const ailmentInfo = Object.values(STATUS_AILMENTS).find(a => a.id === inflict.type);
+                                        message += ` ${target.name}は${ailmentInfo.name}になった！`;
+                                    }
+                                }
+                            });
                         }
                     });
                     break;
                 case 'item':
-                    if (action.item.effect === 'heal_hp') {
-                        targets[0].hp = Math.min(getTotalStats(targets[0]).maxHp, targets[0].hp + action.item.value);
-                        message = `${actor.name} は ${action.item.name} を使った！ ${targets[0].name} のHPが ${action.item.value} 回復した！`;
-                        gameState.inventory[action.item.name]--;
+                    const item = action.item;
+                    const target = targets[0];
+                    message = `${actor.name} は ${item.name} を使った！`;
+                    gameState.inventory[item.name]--;
+
+                    if (item.effect === 'heal_hp') {
+                        target.hp = Math.min(getTotalStats(target).maxHp, target.hp + item.value);
+                        message += ` ${target.name} のHPが ${item.value} 回復した！`;
                         className = 'log-heal';
+                    } else if (item.effect === 'cure_poison') {
+                        const poison = target.statusAilments.find(a => a.type === STATUS_AILMENTS.POISON.id);
+                        if (poison) {
+                            target.statusAilments = target.statusAilments.filter(a => a.type !== STATUS_AILMENTS.POISON.id);
+                            message += ` ${target.name}の毒が治った！`;
+                        } else {
+                            message += ' しかし、何も起こらなかった。';
+                        }
+                        className = 'log-info';
                     }
                     break;
                 case 'defend':
@@ -643,6 +819,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             logMessage(message, 'battle', { className });
         }
+
+        // Apply end-of-turn effects
+        applyEndOfTurnStatusEffects(actor);
 
         gameState.battle.turnIndex = (gameState.battle.turnIndex + 1) % gameState.battle.turnOrder.length;
         updateBattleUI();
@@ -920,24 +1099,49 @@ document.addEventListener('DOMContentLoaded', () => {
         const skillContainer = document.getElementById('char-detail-skills');
         skillContainer.innerHTML = '';
         const jobSkillTree = SKILL_TREE_DATA[character.job] || {};
-        for(const skillName in jobSkillTree) {
-            if (!character.skills.includes(skillName)) {
-                const skillInfo = jobSkillTree[skillName];
-                const skillData = SKILL_MASTER_DATA[skillName];
+
+        for(const nodeKey in jobSkillTree) {
+            const nodeInfo = jobSkillTree[nodeKey];
+            const isLearned = character.learnedSkillTreeNodes.includes(nodeKey);
+
+            if (!isLearned) {
                 const entryDiv = document.createElement('div');
                 entryDiv.className = 'item-list-entry';
+                let description = '';
+                let title = '';
+
+                if (nodeInfo.type === 'SKILL') {
+                    const skillData = SKILL_MASTER_DATA[nodeInfo.skillName];
+                    title = `${nodeInfo.skillName} (要Lv${nodeInfo.requiredLevel})`;
+                    description = skillData.desc;
+                } else if (nodeInfo.type === 'STAT_BOOST') {
+                    title = `${nodeKey} (要Lv${nodeInfo.requiredLevel})`;
+                    description = `永続的に ${nodeInfo.stat.toUpperCase()} が ${nodeInfo.value} 上昇する。`;
+                }
+
+
                 entryDiv.innerHTML = `<div>
-                    <strong>${skillName}</strong> (要Lv${skillInfo.requiredLevel})
-                    <div class="skill-desc">${skillData.desc}</div>
+                    <strong>${title}</strong>
+                    <div class="skill-desc">${description}</div>
                 </div>`;
+
                 const learnBtn = document.createElement('button');
-                learnBtn.textContent = `習得 (SP:${skillInfo.cost})`;
-                learnBtn.disabled = character.skillPoints < skillInfo.cost || character.level < skillInfo.requiredLevel;
+                learnBtn.textContent = `習得 (SP:${nodeInfo.cost})`;
+                learnBtn.disabled = character.skillPoints < nodeInfo.cost || character.level < nodeInfo.requiredLevel;
+
                 learnBtn.onclick = () => {
-                    character.skillPoints -= skillInfo.cost;
-                    character.skills.push(skillName);
-                    openCharacterDetailScreen(charId);
+                    character.skillPoints -= nodeInfo.cost;
+                    character.learnedSkillTreeNodes.push(nodeKey);
+                    if (nodeInfo.type === 'SKILL') {
+                        character.skills.push(nodeInfo.skillName);
+                    }
+                     // HP/MPの場合は現在値も更新
+                    if (nodeInfo.stat === 'maxHp') character.hp += nodeInfo.value;
+                    if (nodeInfo.stat === 'maxMp') character.mp += nodeInfo.value;
+
+                    openCharacterDetailScreen(charId); // UIを再描画
                 };
+
                 entryDiv.appendChild(learnBtn);
                 skillContainer.appendChild(entryDiv);
             }
