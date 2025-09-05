@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const initialGameState = {
         roster: [],
         party: [],
-        inventory: { 'やくそう': 5, 'こん棒': 1, '布の服': 1, '皮の帽子': 1 },
+        inventory: { 'やくそう': 5 },
         gold: 100,
         currentScreen: 'title',
         battle: null,

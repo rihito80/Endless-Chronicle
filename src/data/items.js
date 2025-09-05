@@ -8,8 +8,6 @@ const ITEM_MASTER_DATA = {
     // Special Effect & Job-specific Items
     'けいけんちのゆびわ': { name: 'けいけんちのゆびわ', type: 'accessory', rarity: 'RARE', specialEffects: [{ effect: 'exp_gain_up', value: 0.1 }], desc: '獲得経験値が10%増加する指輪。', buyPrice: 2000, sellPrice: 1000 },
     'ゴールドリング': { name: 'ゴールドリング', type: 'accessory', rarity: 'RARE', specialEffects: [{ effect: 'gold_gain_up', value: 0.15 }], desc: '獲得ゴールドが15%増加する指輪。', buyPrice: 2000, sellPrice: 1000 },
-    'せんしのこて': { name: 'せんしのこて', type: 'hands', rarity: 'RARE', jobRestriction: ['戦士', 'パラディン'], desc: '戦士とパラディンのみが装備できる頑丈な小手。', buyPrice: 1800, sellPrice: 900 },
-    'けんじゃのローブ': { name: 'けんじゃのローブ', type: 'torso', rarity: 'RARE', jobRestriction: ['魔法使い', '賢者'], desc: '賢者と魔法使いのみが装備できるローブ。', buyPrice: 2200, sellPrice: 1100 },
 
     // ステータスアップアイテム
     'ちからのたね': { name: 'ちからのたね', type: 'consume', rarity: 'COMMON', effect: 'stat_boost', stat: 'str', value: 1, target: 'single_ally', desc: '味方単体のSTRを永続的に1上げる。', sellPrice: 250 },
