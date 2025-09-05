@@ -58,9 +58,19 @@
                 <button id="go-to-temple-btn">転職神殿</button>
                 <button id="go-to-reincarnation-btn">転生の祭壇</button>
                 <button id="open-save-screen">セーブ</button>
+                <button id="go-to-emblems-btn">紋章一覧</button>
                 <button id="go-to-help-btn">ヘルプ</button>
             </div>
              <div id="hub-log" class="log-window"></div>
+        </div>
+
+        <!-- Emblem Screen -->
+        <div id="emblem-screen" class="screen hidden">
+            <h2>紋章一覧</h2>
+            <div id="emblem-list" class="item-list">
+                <!-- Emblems will be populated here by JS -->
+            </div>
+            <button class="back-to-hub">拠点へ戻る</button>
         </div>
 
         <!-- ショップ画面 -->
@@ -263,6 +273,7 @@
     <script src="data/monsters.js"></script>
     <script src="data/dungeons.js"></script>
     <script src="data/effects.js"></script>
+    <script src="data/emblems.js"></script>
     <!-- Main Game Logic -->
     <script src="game.js"></script>
 </body>

@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
         battle: null,
         dungeon: null,
         gachaRecruit: null,
+        emblems: {},
     };
 
     function resetGameState() {
@@ -149,7 +150,21 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // 6. 最終ステータスを計算 (ベース * 乗数)
+        // 6. 紋章によるパーティ全体への乗算ボーナス
+        if (gameState.emblems) {
+            for (const emblemName in gameState.emblems) {
+                const count = gameState.emblems[emblemName];
+                if (count > 0) {
+                    const emblemData = EMBLEM_MASTER_DATA[emblemName];
+                    if (emblemData && emblemData.bonus) {
+                        const { stat, value } = emblemData.bonus;
+                        multipliers[stat] = (multipliers[stat] || 1.0) + (value * count);
+                    }
+                }
+            }
+        }
+
+        // 7. 最終ステータスを計算 (ベース * 乗数)
         const total = {};
         for(const stat in baseStats) {
             total[stat] = Math.round(baseStats[stat] * (multipliers[stat] || 1.0));
@@ -1076,7 +1091,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (m.drops) {
                     m.drops.forEach(drop => {
                         if (Math.random() < drop.chance * luckFactor) {
-                            allDrops.push(drop.itemName);
+                            if (drop.dropType === 'seed') {
+                                const targetRarity = drop.rarity === 'MONSTER' ? m.rarity : drop.rarity;
+                                const possibleSeeds = Object.values(ITEM_MASTER_DATA).filter(item =>
+                                    item.effect === 'stat_boost' && item.rarity === targetRarity
+                                );
+                                if (possibleSeeds.length > 0) {
+                                    const chosenSeed = possibleSeeds[Math.floor(Math.random() * possibleSeeds.length)];
+                                    allDrops.push(chosenSeed.name);
+                                }
+                            } else {
+                                allDrops.push(drop.itemName);
+                            }
                         }
                     });
                 }
@@ -1130,6 +1156,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     resultText.innerHTML += `<p class="log-item">${dropName} を手に入れた。</p>`;
                 }
             });
+
+            // Emblem Drop Logic
+            const dungeonName = gameState.dungeon.name;
+            const emblem = Object.values(EMBLEM_MASTER_DATA).find(e => e.dungeonKey === dungeonName);
+            if (emblem && Math.random() < 0.05) { // 5% drop chance for emblems
+                gameState.emblems[emblem.name] = (gameState.emblems[emblem.name] || 0) + 1;
+                resultText.innerHTML += `<p class="log-win"><strong>「${emblem.name}」を手に入れた！</strong></p>`;
+            }
 
             nextBattleBtn.classList.remove('hidden'); // 勝利時は常に表示
             if (gameState.dungeon.currentFloor < gameState.dungeon.depth) {
@@ -1846,6 +1880,27 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
+    function openEmblemScreen() {
+        const container = document.getElementById('emblem-list');
+        container.innerHTML = ''; // Clear previous content
+
+        for (const emblemName in EMBLEM_MASTER_DATA) {
+            const emblem = EMBLEM_MASTER_DATA[emblemName];
+            const count = gameState.emblems[emblemName] || 0;
+
+            const entryDiv = document.createElement('div');
+            entryDiv.className = 'item-list-entry';
+            entryDiv.innerHTML = `
+                <div style="flex-grow: 1; opacity: ${count > 0 ? 1 : 0.5};">
+                    <strong style="font-size: 1.1em;">${emblem.name} (所持: ${count})</strong>
+                    <div class="skill-desc" style="font-size: 0.9em; margin-top: 4px;">${emblem.desc}</div>
+                </div>
+            `;
+            container.appendChild(entryDiv);
+        }
+        showScreen('emblem-screen');
+    }
+
     function openHelpScreen() {
         const container = document.getElementById('help-race-info');
         container.innerHTML = ''; // Clear previous content
@@ -2033,6 +2088,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('job-change-options').classList.add('hidden');
         });
         document.getElementById('go-to-reincarnation-btn').addEventListener('click', openReincarnationScreen);
+        document.getElementById('go-to-emblems-btn').addEventListener('click', openEmblemScreen);
         document.getElementById('go-to-help-btn').addEventListener('click', openHelpScreen);
         document.getElementById('cancel-reincarnation-btn').addEventListener('click', () => {
             document.getElementById('reincarnation-options').classList.add('hidden');
