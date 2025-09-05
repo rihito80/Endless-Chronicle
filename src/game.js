@@ -350,7 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openShopScreen() {
-        document.getElementById('player-gold').textContent = gameState.gold;
+        document.getElementById('player-gold').textContent = gameState.gold.toLocaleString();
 
         const buyList = document.getElementById('shop-buy-list');
         const sellList = document.getElementById('shop-sell-list');
@@ -645,26 +645,36 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             resultText.innerHTML += `<p class="log-info">${expGained} の経験値を獲得した。</p>`;
 
-            getActivePartyMembers().forEach(p => {
+            getActivePartyMembers().forEach((p, index) => {
                 if (p.hp > 0) {
                     p.exp += expGained;
                     levelUp(p).forEach(log => {
                         resultText.innerHTML += `<p class="${log.className}">${log.message}</p>`;
                     });
 
-                    // EXPバーを生成
+                    // EXPバーをアニメーション付きで生成
                     const nextLevelExp = getNextLevelExp(p.level);
-                    const expPercentage = Math.round((p.exp / nextLevelExp) * 100);
+                    const finalExpPercentage = Math.round((p.exp / nextLevelExp) * 100);
+                    const barFillId = `result-bar-fill-${p.id}-${index}`; // Unique ID
+
                     const expBarHTML = `
                         <div class="result-exp-bar-item">
                             <span class="name">${p.name} (Lv.${p.level})</span>
                             <div class="exp-bar-container">
-                                <div class="exp-bar-fill" style="width: ${expPercentage}%;"></div>
+                                <div class="exp-bar-fill" id="${barFillId}" style="width: 0%;"></div>
                                 <span class="exp-bar-text">${p.exp} / ${nextLevelExp}</span>
                             </div>
                         </div>
                     `;
                     resultExpBarsContainer.innerHTML += expBarHTML;
+
+                    // Animate the bar after a short delay
+                    setTimeout(() => {
+                        const barFill = document.getElementById(barFillId);
+                        if (barFill) {
+                            barFill.style.width = `${finalExpPercentage}%`;
+                        }
+                    }, 100 + (index * 100)); // Stagger the animations
                 }
             });
 
