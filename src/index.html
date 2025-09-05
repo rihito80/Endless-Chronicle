@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Endless Chronicle</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- タイトル画面 -->
+        <div id="title-screen" class="screen">
+            <h1>Endless Chronicle</h1>
+            <button id="start-new-game">ゲーム開始</button>
+            <button id="load-game">続きから</button>
+        </div>
+
+        <!-- キャラクター作成画面 -->
+        <div id="character-creation-screen" class="screen hidden">
+            <h2 id="character-creation-title">キャラクター作成</h2>
+            <input type="text" id="char-name" placeholder="名前を入力">
+            <select id="char-job">
+                <option value="戦士">戦士</option>
+                <option value="魔法使い">魔法使い</option>
+                <option value="僧侶">僧侶</option>
+            </select>
+            <button id="create-character-btn">作成</button>
+            <button id="cancel-creation-btn" class="hidden">キャンセル</button>
+        </div>
+
+        <!-- 拠点画面 -->
+        <div id="hub-screen" class="screen hidden">
+            <h2>拠点</h2>
+            <div id="party-status-hub"></div>
+            <div class="hub-menu">
+                <button id="go-to-dungeon-btn">ダンジョンへ</button>
+                <button id="go-to-party-management-btn">パーティ編成</button>
+                <button id="go-to-temple-btn">転職神殿</button>
+                <button id="go-to-reincarnation-btn">転生の祭壇</button>
+                <button id="save-game-btn">セーブ</button>
+            </div>
+             <div id="hub-log" class="log-window"></div>
+        </div>
+
+        <!-- キャラクターステータス画面 -->
+        <div id="character-detail-screen" class="screen hidden">
+            <div class="detail-container">
+                <div class="detail-left">
+                    <div id="char-detail-header"></div>
+                    <h3>ステータス</h3>
+                    <div id="char-detail-stats"></div>
+                    <h3>装備</h3>
+                    <div id="char-detail-equipment"></div>
+                </div>
+                <div class="detail-right">
+                    <div class="inventory-section">
+                        <h3>持ち物 (クリックで装備)</h3>
+                        <div id="char-detail-inventory" class="item-list"></div>
+                    </div>
+                    <div class="skill-section">
+                        <h3>スキル (SP: <span id="skill-points-display"></span>)</h3>
+                        <div id="char-detail-skills" class="item-list"></div>
+                    </div>
+                </div>
+            </div>
+            <button id="back-to-hub-from-detail">拠点へ戻る</button>
+        </div>
+
+        <!-- パーティ編成画面 -->
+        <div id="party-management-screen" class="screen hidden">
+            <h2>パーティ編成</h2>
+            <div class="party-management-container">
+                <div class="character-list-area">
+                    <h3>戦闘メンバー (最大4人)</h3>
+                    <div id="active-party-list" class="character-list"></div>
+                </div>
+                <div class="character-list-area">
+                    <h3>待機メンバー</h3>
+                    <div id="reserve-members-list" class="character-list"></div>
+                </div>
+            </div>
+            <div class="hub-menu">
+                <button id="recruit-member-btn">新しい仲間を勧誘</button>
+                <button class="back-to-hub">拠点へ戻る</button>
+            </div>
+        </div>
+
+        <!-- ダンジョン選択画面 -->
+        <div id="dungeon-select-screen" class="screen hidden">
+            <h2>ダンジョン選択</h2>
+            <ul id="dungeon-list"></ul>
+            <button class="back-to-hub">拠点へ戻る</button>
+        </div>
+
+        <!-- バトル画面 -->
+        <div id="battle-screen" class="screen hidden">
+            <h3 id="dungeon-floor-tracker"></h3>
+            <div id="monster-area"></div>
+            <div id="battle-log" class="log-window"></div>
+            <div id="party-area">
+                <div id="party-status-battle"></div>
+                <div id="command-container">
+                    <div id="command-window">
+                        <button data-command="attack">こうげき</button>
+                        <button data-command="skill">スキル</button>
+                        <button data-command="defend">ぼうぎょ</button>
+                        <button data-command="item">アイテム</button>
+                    </div>
+                    <div id="skill-window" class="sub-window hidden">
+                        <button class="back-to-command">戻る</button>
+                    </div>
+                    <div id="item-window" class="sub-window hidden">
+                        <button class="back-to-command">戻る</button>
+                    </div>
+                    <div id="target-window" class="sub-window hidden">
+                        <p>対象を選択してください</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- リザルト画面 -->
+        <div id="result-screen" class="screen hidden">
+            <h2>リザルト</h2>
+            <div id="result-text"></div>
+            <button id="next-battle-btn">次の戦闘へ</button>
+            <button class="back-to-hub">拠点へ戻る</button>
+        </div>
+
+        <!-- 転職画面 -->
+        <div id="temple-screen" class="screen hidden">
+            <h2>転職神殿</h2>
+            <p>転職するキャラクターを選択してください (Lv.30以上)。</p>
+            <div id="job-change-character-select" class="character-select-list"></div>
+            <div id="job-change-options" class="hidden">
+                 <p id="job-change-info"></p>
+                 <select id="new-job-select"></select>
+                 <button id="execute-job-change-btn">転職する</button>
+                 <button id="cancel-job-change-btn" class="cancel-btn">やめる</button>
+            </div>
+            <button class="back-to-hub">拠点へ戻る</button>
+        </div>
+
+        <!-- 転生画面 -->
+        <div id="reincarnation-screen" class="screen hidden">
+            <h2>転生の祭壇</h2>
+            <p>転生するキャラクターを選択してください (Lv.99)。</p>
+            <div id="reincarnation-character-select" class="character-select-list"></div>
+            <div id="reincarnation-options" class="hidden">
+                <p id="reincarnation-info"></p>
+                <div id="reincarnation-point-allocator"></div>
+                <button id="execute-reincarnation-btn">転生する</button>
+                <button id="cancel-reincarnation-btn" class="cancel-btn">やめる</button>
+            </div>
+             <button class="back-to-hub">拠点へ戻る</button>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
+
