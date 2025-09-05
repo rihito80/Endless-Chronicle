@@ -1,17 +1,3 @@
-const ELEMENTS = {
-    NONE: '無',
-    FIRE: '火',
-    ICE: '氷',
-    THUNDER: '雷',
-    HOLY: '聖',
-    DARK: '闇',
-};
-const STATUS_AILMENTS = {
-    POISON: { id: 'poison', name: '毒', icon: '☠️' },
-    PARALYSIS: { id: 'paralysis', name: '麻痺', icon: '⚡' },
-    SILENCE: { id: 'silence', name: '沈黙', icon: '🤫' },
-};
-
 const SKILL_MASTER_DATA = {
     'スラッシュ': { name: 'スラッシュ', mp: 5, type: 'physical_attack', power: 1.2, target: 'single_enemy', desc: '敵単体に物理ダメージ' },
     'ファイアボール': { name: 'ファイアボール', mp: 8, type: 'magical_attack', power: 1.0, target: 'single_enemy', element: ELEMENTS.FIRE, desc: '敵単体に火属性の魔法ダメージ' },

@@ -1,12 +1,3 @@
-const ELEMENTS = {
-    NONE: '無',
-    FIRE: '火',
-    ICE: '氷',
-    THUNDER: '雷',
-    HOLY: '聖',
-    DARK: '闇',
-};
-
 const MONSTER_MASTER_DATA = {
     'スライム': { name: 'スライム', hp: 25, str: 10, vit: 5, int: 5, mnd: 5, agi: 8, exp: 5, drop: 'やくそう', elementalResistances: [ELEMENTS.THUNDER] },
     'ゴブリン': { name: 'ゴブリン', hp: 40, str: 15, vit: 8, int: 5, mnd: 5, agi: 12, exp: 10, drop: 'こん棒' },
