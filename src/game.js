@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const initialGameState = {
         roster: [],
         party: [],
-        inventory: { 'やくそう': 5, 'こん棒': 1, '布の服': 1 },
+        inventory: { 'やくそう': 5, 'こん棒': 1, '布の服': 1, '皮の帽子': 1 },
         gold: 100,
         currentScreen: 'title',
         battle: null,
@@ -47,11 +47,12 @@ document.addEventListener('DOMContentLoaded', () => {
             skillPoints: 0,
             skills: [...JOB_MASTER_DATA[job].skills],
             learnedSkillTreeNodes: [], // スキルツリーでの習得済みノードを記録
-            equipment: { weapon: null, armor: null, accessory: null },
+            equipment: { weapon: null, head: null, torso: null, hands: null, feet: null, accessory: null },
             jobHistory: [{ job: job, level: 1 }],
             permanentBonus: { hp: 0, mp: 0, str: 0, vit: 0, int: 0, mnd: 0, agi: 0, luk: 0 },
             reincarnationCount: 0,
             statusAilments: [],
+            buffs: [], // バフ・デバフを格納する配列
         };
         return char;
     }
@@ -115,6 +116,16 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        // 6. バフ・デバフによるボーナス
+        if (character.buffs) {
+            character.buffs.forEach(buffInstance => {
+                const buffData = BUFF_DEBUFF_MASTER_DATA[buffInstance.id];
+                if (buffData && buffData.stat && total[buffData.stat]) {
+                    total[buffData.stat] = Math.round(total[buffData.stat] * buffData.modifier);
+                }
+            });
+        }
+
         total.maxHp = (character.maxHp || 0) + (character.permanentBonus?.hp || 0);
         total.maxMp = (character.maxMp || 0) + (character.permanentBonus?.mp || 0);
         return total;
@@ -172,7 +183,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function performJobChange(character, newJob) {
-        if (character.level < 30) return false;
+        const newJobData = JOB_MASTER_DATA[newJob];
+        if (!newJobData || !checkJobRequirements(character, newJobData)) {
+            return false;
+        }
+
         const bonus = Math.floor(character.level / 10);
         const oldJobMainStats = Object.entries(JOB_MASTER_DATA[character.job])
             .filter(([, val]) => val === 'A' || val === 'S')
@@ -224,7 +239,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function equipItem(character, itemName) {
         const item = ITEM_MASTER_DATA[itemName];
-        if (!item || !['weapon', 'armor', 'accessory'].includes(item.type)) return;
+        if (!item || !['weapon', 'head', 'torso', 'hands', 'feet', 'accessory'].includes(item.type)) return;
+
+        // Check for job restrictions
+        if (item.jobRestriction && !item.jobRestriction.includes(character.job)) {
+            alert(`この装備は ${item.jobRestriction.join('か')} のキャラクターのみが装備できます。`);
+            return;
+        }
 
         const slot = item.type;
         const currentlyEquipped = character.equipment[slot];
@@ -422,8 +443,9 @@ document.addEventListener('DOMContentLoaded', () => {
         monsterArea.innerHTML = '';
         gameState.battle.monsters.forEach((m, index) => {
             let statusIcons = m.statusAilments.map(s => STATUS_AILMENTS[s.type.toUpperCase()]?.icon || '').join('');
+            let buffIcons = m.buffs.map(b => BUFF_DEBUFF_MASTER_DATA[b.id]?.icon || '').join('');
             monsterArea.innerHTML += (m.hp > 0) ?
-                `<div class="monster-info" data-index="${index}">${m.name} ${statusIcons}<br>HP: ${m.hp}/${m.maxHp}</div>` :
+                `<div class="monster-info" data-index="${index}">${m.name} ${statusIcons}${buffIcons}<br>HP: ${m.hp}/${m.maxHp}</div>` :
                 `<div class="monster-info defeated">${m.name}<br>倒した</div>`;
         });
 
@@ -432,9 +454,10 @@ document.addEventListener('DOMContentLoaded', () => {
         getActivePartyMembers().forEach((p) => {
             const pStats = getTotalStats(p);
             let statusIcons = p.statusAilments.map(s => STATUS_AILMENTS[s.type.toUpperCase()]?.icon || '').join('');
+            let buffIcons = p.buffs.map(b => BUFF_DEBUFF_MASTER_DATA[b.id]?.icon || '').join('');
              partyStatus.innerHTML += `
                 <div class="party-member ${p === gameState.battle.activeCharacter ? 'active-turn' : ''}" data-id="${p.id}">
-                     <strong>${p.name} ${statusIcons}</strong> (Lv.${p.level})<br>
+                     <strong>${p.name} ${statusIcons}${buffIcons}</strong> (Lv.${p.level})<br>
                      ❤️ HP: ${p.hp}/${pStats.maxHp} | 💧 MP: ${p.mp}/${pStats.maxMp}
                 </div>`;
         });
@@ -533,6 +556,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 stats: stats,
                 permanentBonus: {},
                 statusAilments: [],
+                buffs: [],
             };
         });
 
@@ -552,12 +576,29 @@ document.addEventListener('DOMContentLoaded', () => {
         nextTurn();
     }
 
-    function applyEndOfTurnStatusEffects(character) {
+    function applyBuff(character, buffId) {
+        const buffData = BUFF_DEBUFF_MASTER_DATA[buffId];
+        if (!buffData) return;
+
+        // すでに同じバフ/デバフがかかっているか確認
+        const existingBuff = character.buffs.find(b => b.id === buffId);
+        if (existingBuff) {
+            // かかっている場合はターン数をリセット
+            existingBuff.turns = buffData.turns;
+        } else {
+            // かかっていない場合は新しく追加
+            character.buffs.push({ id: buffId, turns: buffData.turns });
+        }
+    }
+
+    function applyEndOfTurnEffects(character) {
         let effectMessages = [];
         const ailmentsToRemove = [];
+        const buffsToRemove = [];
 
+        // 1. 状態異常の処理
         character.statusAilments.forEach(ailment => {
-            // Poison: Take damage
+            // 毒ダメージ
             if (ailment.type === STATUS_AILMENTS.POISON.id) {
                 const poisonDamage = Math.max(1, Math.floor(getTotalStats(character).maxHp * 0.05));
                 character.hp = Math.max(0, character.hp - poisonDamage);
@@ -567,7 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
-            // Decrement turn count
+            // ターン経過
             ailment.turns--;
             if (ailment.turns <= 0) {
                 ailmentsToRemove.push(ailment.type);
@@ -579,9 +620,39 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Remove expired ailments
+        // 2. バフ・デバフの処理
+        character.buffs.forEach(buff => {
+            const buffData = BUFF_DEBUFF_MASTER_DATA[buff.id];
+            if (!buffData) return;
+
+            // リジェネ効果
+            if (buffData.effect === 'regen_hp') {
+                const healAmount = Math.max(1, Math.floor(getTotalStats(character).maxHp * buffData.value));
+                character.hp = Math.min(getTotalStats(character).maxHp, character.hp + healAmount);
+                 effectMessages.push({
+                    message: `${character.name}はリジェネでHPが${healAmount}回復した。`,
+                    className: 'log-heal'
+                });
+            }
+
+            // ターン経過
+            buff.turns--;
+            if (buff.turns <= 0) {
+                buffsToRemove.push(buff.id);
+                effectMessages.push({
+                    message: `${character.name}の${buffData.name}の効果が切れた。`,
+                    className: 'log-info'
+                });
+            }
+        });
+
+
+        // 3. 期限切れの効果を削除
         if (ailmentsToRemove.length > 0) {
             character.statusAilments = character.statusAilments.filter(a => !ailmentsToRemove.includes(a.type));
+        }
+        if (buffsToRemove.length > 0) {
+            character.buffs = character.buffs.filter(b => !buffsToRemove.includes(b.id));
         }
 
         // Log messages and update UI
@@ -619,7 +690,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const ailmentName = Object.values(STATUS_AILMENTS).find(a => a.id === isImmobilized.type)?.name || '状態異常';
             logMessage(`${active.name}は${ailmentName}で動けない！`, 'battle', { className: 'log-info' });
             setTimeout(() => {
-                 applyEndOfTurnStatusEffects(active);
+                 applyEndOfTurnEffects(active);
                  gameState.battle.turnIndex = (gameState.battle.turnIndex + 1) % gameState.battle.turnOrder.length;
                  nextTurn();
             }, 1000);
@@ -723,6 +794,17 @@ document.addEventListener('DOMContentLoaded', () => {
                                     }
                                 });
                             }
+
+                            // Apply buffs from skill
+                            if (action.skill.appliesBuff) {
+                                action.skill.appliesBuff.forEach(buffId => {
+                                    applyBuff(target, buffId);
+                                    const buffData = BUFF_DEBUFF_MASTER_DATA[buffId];
+                                    if(buffData) {
+                                       message += ` ${target.name}に${buffData.name}の効果！`;
+                                    }
+                                });
+                            }
                         });
                     }
                     break;
@@ -756,7 +838,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Apply end-of-turn effects
-        applyEndOfTurnStatusEffects(actor);
+        applyEndOfTurnEffects(actor);
 
         gameState.battle.turnIndex = (gameState.battle.turnIndex + 1) % gameState.battle.turnOrder.length;
         updateBattleUI();
@@ -784,12 +866,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (isWin) {
             resultText.innerHTML += `<p class="log-win">勝利！</p>`;
-            let expGained = 0, allDrops = [];
+            let baseExpGained = 0, baseGoldGained = 0, allDrops = [];
+            let expBonus = 1.0, goldBonus = 1.0;
+
+            // Calculate bonuses from equipment
+            getActivePartyMembers().forEach(p => {
+                if (p.hp <= 0) return; // Skip dead members
+                Object.values(p.equipment).forEach(itemName => {
+                    if (itemName) {
+                        const itemData = ITEM_MASTER_DATA[itemName];
+                        if (itemData && itemData.specialEffects) {
+                            itemData.specialEffects.forEach(effect => {
+                                if (effect.effect === 'exp_gain_up') {
+                                    expBonus += effect.value;
+                                } else if (effect.effect === 'gold_gain_up') {
+                                    goldBonus += effect.value;
+                                }
+                            });
+                        }
+                    }
+                });
+            });
+
+
             const partyLuck = getActivePartyMembers().reduce((sum, p) => sum + getTotalStats(p).luk, 0);
             const luckFactor = 1 + (partyLuck / 200);
 
             gameState.battle.monsters.forEach(m => {
-                expGained += m.exp;
+                baseExpGained += m.exp;
+                baseGoldGained += m.gold || 0;
                 if (m.drops) {
                     m.drops.forEach(drop => {
                         if (Math.random() < drop.chance * luckFactor) {
@@ -798,11 +903,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
             });
-            resultText.innerHTML += `<p class="log-info">${expGained} の経験値を獲得した。</p>`;
+
+            const finalExpGained = Math.round(baseExpGained * expBonus);
+            const finalGoldGained = Math.round(baseGoldGained * goldBonus);
+            gameState.gold += finalGoldGained;
+
+            resultText.innerHTML += `<p class="log-info">${finalExpGained} の経験値を獲得した。</p>`;
+            if(finalGoldGained > 0) {
+                resultText.innerHTML += `<p class="log-item">${finalGoldGained}G を手に入れた。</p>`;
+            }
 
             getActivePartyMembers().forEach((p, index) => {
                 if (p.hp > 0) {
-                    p.exp += expGained;
+                    p.exp += finalExpGained;
                     levelUp(p).forEach(log => {
                         resultText.innerHTML += `<p class="${log.className}">${log.message}</p>`;
                     });
@@ -983,8 +1096,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const equipContainer = document.getElementById('char-detail-equipment');
         equipContainer.innerHTML = '';
-        const slotEmojis = { weapon: '🗡️', armor: '👕', accessory: '💍' };
-        ['weapon', 'armor', 'accessory'].forEach(slot => {
+        const slotEmojis = { weapon: '🗡️', head: '🎓', torso: '👕', hands: '🧤', feet: '👢', accessory: '💍' };
+        ['weapon', 'head', 'torso', 'hands', 'feet', 'accessory'].forEach(slot => {
             const itemName = character.equipment[slot];
             const slotDiv = document.createElement('div');
             slotDiv.className = 'equip-slot';
@@ -1008,7 +1121,7 @@ document.addEventListener('DOMContentLoaded', () => {
         inventoryContainer.innerHTML = '';
         for (const itemName in gameState.inventory) {
             const item = ITEM_MASTER_DATA[itemName];
-            if (['weapon', 'armor', 'accessory'].includes(item.type)) {
+            if (['weapon', 'head', 'torso', 'hands', 'feet', 'accessory'].includes(item.type)) {
                 const entryDiv = document.createElement('div');
                 entryDiv.className = 'item-list-entry';
 
@@ -1026,6 +1139,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const equipBtn = document.createElement('button');
                 equipBtn.textContent = '装備';
+                if (item.jobRestriction && !item.jobRestriction.includes(character.job)) {
+                    equipBtn.disabled = true;
+                    equipBtn.title = `この装備は ${item.jobRestriction.join('か')} のキャラクターのみが装備できます。`;
+                }
                 equipBtn.onclick = () => equipItem(character, itemName);
                 entryDiv.appendChild(equipBtn);
                 inventoryContainer.appendChild(entryDiv);
@@ -1208,31 +1325,89 @@ document.addEventListener('DOMContentLoaded', () => {
         gameState.roster.forEach(char => {
             const btn = document.createElement('button');
             btn.textContent = `${char.name} (${char.job} Lv.${char.level})`;
-            btn.disabled = char.level < 30;
             btn.onclick = () => selectCharacterForJobChange(char);
             charList.appendChild(btn);
         });
         showScreen('temple-screen');
     }
 
-    function selectCharacterForJobChange(character) {
-        document.getElementById('job-change-info').textContent = `${character.name} の新しい職業を選択してください。転職するとレベル1に戻ります。`;
-        const jobSelect = document.getElementById('new-job-select');
-        jobSelect.innerHTML = '';
-        Object.keys(JOB_MASTER_DATA).forEach(job => {
-            if (job !== character.job) {
-                const option = document.createElement('option');
-                option.value = job;
-                option.textContent = job;
-                jobSelect.appendChild(option);
+    function checkJobRequirements(character, jobData) {
+        if (!jobData.requirements) {
+            // Tier 1 jobs are available if the character is level 10 or higher.
+            return character.level >= 10;
+        }
+
+        const jobHistory = [...character.jobHistory, { job: character.job, level: character.level }];
+        const maxLevels = {};
+        jobHistory.forEach(record => {
+            if (!maxLevels[record.job] || record.level > maxLevels[record.job]) {
+                maxLevels[record.job] = record.level;
             }
         });
+
+        for (const requiredJob in jobData.requirements) {
+            const requiredLevel = jobData.requirements[requiredJob];
+            if ((maxLevels[requiredJob] || 0) < requiredLevel) {
+                return false; // Did not meet a requirement
+            }
+        }
+        return true; // All requirements met
+    }
+
+    function selectCharacterForJobChange(character) {
         document.getElementById('job-change-options').classList.remove('hidden');
+        const jobSelect = document.getElementById('new-job-select');
+        jobSelect.innerHTML = ''; // Clear previous options
+
+        const availableJobs = Object.keys(JOB_MASTER_DATA).filter(jobName => {
+            if (jobName === character.job) return false;
+            // 既にその職をマスターしている（jobHistoryにいる）場合は選択肢に出さない
+            if (character.jobHistory.some(h => h.job === jobName)) return false;
+
+            const jobData = JOB_MASTER_DATA[jobName];
+            return checkJobRequirements(character, jobData);
+        });
+
+        if (availableJobs.length > 0) {
+            availableJobs.forEach(jobName => {
+                const option = document.createElement('option');
+                option.value = jobName;
+                option.textContent = jobName;
+                jobSelect.appendChild(option);
+            });
+        } else {
+            jobSelect.innerHTML = '<option>転職できる職業がありません</option>';
+        }
+
+        // Update info text and button logic when selection changes
+        const updateInfo = () => {
+            const selectedJobName = jobSelect.value;
+            const selectedJobData = JOB_MASTER_DATA[selectedJobName];
+            let requirementsText = `<strong>${selectedJobName}</strong><br>転職条件: `;
+            if (selectedJobData && selectedJobData.requirements) {
+                requirementsText += Object.entries(selectedJobData.requirements)
+                    .map(([job, level]) => `${job} Lv.${level}`)
+                    .join(', ');
+            } else if (selectedJobData) {
+                 requirementsText += 'Lv.10 以上';
+            } else {
+                 requirementsText = '転職できる職業がありません';
+            }
+
+            document.getElementById('job-change-info').innerHTML = requirementsText;
+            document.getElementById('execute-job-change-btn').disabled = availableJobs.length === 0;
+        };
+
+        jobSelect.onchange = updateInfo;
+        updateInfo(); // Initial call
+
         document.getElementById('execute-job-change-btn').onclick = () => {
-            if(performJobChange(character, jobSelect.value)) {
+            if (performJobChange(character, jobSelect.value)) {
                 logMessage(`${character.name} が ${jobSelect.value} に転職した！`, 'hub', { clear: true, className: 'log-levelup' });
                 updateHubUI();
                 showScreen('hub-screen');
+            } else {
+                alert('転職に失敗しました。');
             }
         };
     }
@@ -1540,6 +1715,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('command-container').addEventListener('click', (e) => {
             if (e.target.classList.contains('back-to-command')) {
+                // メインコマンドのボタンを再有効化
+                document.querySelectorAll('#command-window button').forEach(btn => btn.disabled = false);
+                const active = gameState.battle.activeCharacter;
+                // 沈黙状態ならスキルボタンは無効のまま
+                if (active && active.statusAilments.some(s => s.type === STATUS_AILMENTS.SILENCE.id)) {
+                    document.querySelector('button[data-command="skill"]').disabled = true;
+                }
                 showBattleCommandUI('command');
                 return;
             }

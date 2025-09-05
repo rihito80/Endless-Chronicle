@@ -27,6 +27,12 @@ const SKILL_MASTER_DATA = {
     'ギガスラッシュ': { name: 'ギガスラッシュ', mp: 40, type: 'physical_attack', power: 2.2, target: 'all_enemies', desc: '敵全体に強力な物理ダメージ' },
     'メテオストライク': { name: 'メテオストライク', mp: 55, type: 'magical_attack', power: 2.0, target: 'all_enemies', element: ELEMENTS.FIRE, desc: '敵全体に究極の火属性魔法ダメージ' },
     'レインアロー': { name: 'レインアロー', mp: 38, type: 'physical_attack', power: 1.5, target: 'all_enemies', desc: '敵全体に矢の雨を降らせる' },
+
+    // Buff/Debuff Skills
+    'パワーアップ': { name: 'パワーアップ', mp: 8, desc: '自身の攻撃力を一時的に上昇させる。', target: 'self', type: 'support', appliesBuff: ['attack_up'] },
+    'プロテス': { name: 'プロテス', mp: 8, desc: '味方単体の防御力を一時的に上昇させる。', target: 'single_ally', type: 'support', appliesBuff: ['defense_up'] },
+    'ウィーク': { name: 'ウィーク', mp: 6, desc: '敵単体の防御力を一時的に低下させる。', target: 'single_enemy', type: 'support', appliesBuff: ['defense_down'] },
+    'リジェネ': { name: 'リジェネ', mp: 12, desc: '味方単体を徐々に回復させる。', target: 'single_ally', type: 'support', appliesBuff: ['regen'] },
 };
 
 const SKILL_TREE_DATA = {
