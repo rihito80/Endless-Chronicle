@@ -994,6 +994,29 @@ document.addEventListener('DOMContentLoaded', () => {
             const savedData = localStorage.getItem(key);
             if (savedData) {
                 gameState = JSON.parse(savedData);
+
+                // --- Data Migration Logic ---
+                // Add new properties to characters if they don't exist in the save file.
+                gameState.roster.forEach(char => {
+                    if (!char.buffs) {
+                        char.buffs = [];
+                    }
+                    if (!char.jobHistory) {
+                        char.jobHistory = [{ job: char.job, level: char.level }];
+                    }
+                    // Migrate old armor slot to new slots
+                    if (char.equipment && char.equipment.armor !== undefined) {
+                        if (!char.equipment.torso) {
+                           char.equipment.torso = char.equipment.armor;
+                        }
+                        delete char.equipment.armor;
+                        if (char.equipment.head === undefined) char.equipment.head = null;
+                        if (char.equipment.hands === undefined) char.equipment.hands = null;
+                        if (char.equipment.feet === undefined) char.equipment.feet = null;
+                    }
+                });
+                // --- End Migration Logic ---
+
                 logMessage(`スロット ${slot} からロードしました。`, 'hub', { clear: true, className: 'log-info' });
                 updateHubUI();
                 showScreen('hub-screen');
