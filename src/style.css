@@ -173,3 +173,102 @@ input, select {
 .character-select-list { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; }
 .stat-allocator { display: flex; justify-content: space-between; align-items: center; width: 200px; margin: 5px 0; }
 
+/* EXP Bar Styles */
+#char-exp-section {
+    margin-top: 10px;
+}
+
+.exp-bar-container {
+    width: 100%;
+    height: 22px;
+    background-color: #1a1a1a;
+    border: 1px solid #555;
+    border-radius: 5px;
+    position: relative;
+    margin-top: 5px;
+    box-sizing: border-box;
+}
+
+.exp-bar-fill {
+    height: 100%;
+    background-color: #4caf50; /* A nice green */
+    border-radius: 4px;
+    transition: width 0.5s ease-in-out;
+}
+
+.exp-bar-text {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    text-shadow: 1px 1px 1px #000;
+    font-size: 12px;
+    line-height: 20px;
+}
+
+/* Result Screen EXP Bars */
+#result-exp-bars {
+    width: 100%;
+    padding: 0 10px;
+    margin-top: 10px;
+    box-sizing: border-box;
+}
+
+.result-exp-bar-item {
+    margin-bottom: 8px;
+}
+
+.result-exp-bar-item .name {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 14px;
+}
+
+/* Delete Button Style */
+.delete-btn {
+    background-color: #a03232; /* Dark Red */
+    border-color: #7c2424;
+}
+
+.delete-btn:hover:not(:disabled) {
+    background-color: #c03f3f; /* Brighter Red on Hover */
+    border-color: #a03232;
+}
+
+/* Shop Screen Styles */
+#player-gold-display {
+    align-self: flex-end;
+    padding: 8px 15px;
+    margin-bottom: 10px;
+    background-color: rgba(0,0,0,0.3);
+    border: 1px solid #555;
+    border-radius: 5px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.shop-container {
+    display: flex;
+    width: 100%;
+    flex-grow: 1;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.shop-panel {
+    width: 50%;
+    border: 1px solid #555;
+    border-radius: 5px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    background-color: rgba(0,0,0,0.1);
+}
+
+.shop-panel h3 {
+    margin-top: 0;
+    text-align: center;
+}

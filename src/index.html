@@ -37,11 +37,29 @@
             <div class="hub-menu">
                 <button id="go-to-dungeon-btn">ダンジョンへ</button>
                 <button id="go-to-party-management-btn">パーティ編成</button>
+                <button id="go-to-shop-btn">ショップ</button>
                 <button id="go-to-temple-btn">転職神殿</button>
                 <button id="go-to-reincarnation-btn">転生の祭壇</button>
                 <button id="open-save-screen">セーブ</button>
             </div>
              <div id="hub-log" class="log-window"></div>
+        </div>
+
+        <!-- ショップ画面 -->
+        <div id="shop-screen" class="screen hidden">
+            <h2>ショップ</h2>
+            <div id="player-gold-display">所持ゴールド: <span id="player-gold"></span>G</div>
+            <div class="shop-container">
+                <div class="shop-panel">
+                    <h3>購入する</h3>
+                    <div id="shop-buy-list" class="item-list"></div>
+                </div>
+                <div class="shop-panel">
+                    <h3>売却する</h3>
+                    <div id="shop-sell-list" class="item-list"></div>
+                </div>
+            </div>
+            <button id="back-to-hub-from-shop" class="back-to-hub">拠点へ戻る</button>
         </div>
 
         <!-- キャラクターステータス画面 -->
@@ -51,6 +69,13 @@
                     <div id="char-detail-header"></div>
                     <h3>ステータス</h3>
                     <div id="char-detail-stats"></div>
+                    <div id="char-exp-section">
+                        <span>経験値</span>
+                        <div class="exp-bar-container">
+                            <div id="char-detail-exp-fill" class="exp-bar-fill"></div>
+                            <span id="char-detail-exp-text" class="exp-bar-text"></span>
+                        </div>
+                    </div>
                     <h3>装備</h3>
                     <div id="char-detail-equipment"></div>
                 </div>
@@ -129,6 +154,7 @@
         <div id="result-screen" class="screen hidden">
             <h2>リザルト</h2>
             <div id="result-text"></div>
+            <div id="result-exp-bars"></div>
             <button id="next-battle-btn">次の戦闘へ</button>
             <button class="back-to-hub">拠点へ戻る</button>
         </div>
@@ -177,4 +203,3 @@
     <script src="game.js"></script>
 </body>
 </html>
-
