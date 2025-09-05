@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentScreen: 'title',
         battle: null,
         dungeon: null,
+        gachaRecruit: null,
     };
 
     function resetGameState() {
@@ -314,7 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openShopScreen() {
-        document.getElementById('player-gold').textContent = gameState.gold.toLocaleString();
+        document.getElementById('player-gold').textContent = `💰 ${gameState.gold.toLocaleString()}`;
 
         const buyList = document.getElementById('shop-buy-list');
         const sellList = document.getElementById('shop-sell-list');
@@ -408,7 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
             memberDiv.className = 'party-member';
             memberDiv.innerHTML = `
                 <strong>${p.name}</strong> (${p.job} Lv.${p.level}) |
-                HP: ${p.hp}/${pStats.maxHp} | MP: ${p.mp}/${pStats.maxMp}
+                ❤️ HP: ${p.hp}/${pStats.maxHp} | 💧 MP: ${p.mp}/${pStats.maxMp}
             `;
             memberDiv.onclick = () => openCharacterDetailScreen(p.id);
             container.appendChild(memberDiv);
@@ -434,7 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
              partyStatus.innerHTML += `
                 <div class="party-member ${p === gameState.battle.activeCharacter ? 'active-turn' : ''}" data-id="${p.id}">
                      <strong>${p.name} ${statusIcons}</strong> (Lv.${p.level})<br>
-                     HP: ${p.hp}/${pStats.maxHp} | MP: ${p.mp}/${pStats.maxMp}
+                     ❤️ HP: ${p.hp}/${pStats.maxHp} | 💧 MP: ${p.mp}/${pStats.maxMp}
                 </div>`;
         });
     }
@@ -627,6 +628,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (active.job) {
             // Player turn
+            // Re-enable command buttons
+            document.querySelectorAll('#command-window button').forEach(btn => btn.disabled = false);
+
             const isSilenced = active.statusAilments.find(s => s.type === STATUS_AILMENTS.SILENCE.id);
             document.querySelector('button[data-command="skill"]').disabled = !!isSilenced;
             showBattleCommandUI('command');
@@ -942,11 +946,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const statsContainer = document.getElementById('char-detail-stats');
         statsContainer.innerHTML = `
-            <span>HP: ${character.hp} / ${stats.maxHp}</span>
-            <span>MP: ${character.mp} / ${stats.maxMp}</span>
-            <span>STR: ${stats.str}</span><span>VIT: ${stats.vit}</span>
-            <span>INT: ${stats.int}</span><span>MND: ${stats.mnd}</span>
-            <span>AGI: ${stats.agi}</span><span>LUK: ${stats.luk}</span>
+            <span>❤️ HP: ${character.hp} / ${stats.maxHp}</span>
+            <span>💧 MP: ${character.mp} / ${stats.maxMp}</span>
+            <span>⚔️ STR: ${stats.str}</span><span>🛡️ VIT: ${stats.vit}</span>
+            <span>🧙 INT: ${stats.int}</span><span>🙏 MND: ${stats.mnd}</span>
+            <span>🏃 AGI: ${stats.agi}</span><span>🍀 LUK: ${stats.luk}</span>
         `;
 
         // EXPバーを更新
@@ -957,12 +961,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const equipContainer = document.getElementById('char-detail-equipment');
         equipContainer.innerHTML = '';
+        const slotEmojis = { weapon: '🗡️', armor: '👕', accessory: '💍' };
         ['weapon', 'armor', 'accessory'].forEach(slot => {
             const itemName = character.equipment[slot];
             const slotDiv = document.createElement('div');
             slotDiv.className = 'equip-slot';
 
-            let content = `<span>${slot.charAt(0).toUpperCase() + slot.slice(1)}</span>
+            let content = `<span>${slotEmojis[slot]} ${slot.charAt(0).toUpperCase() + slot.slice(1)}</span>
                            <span>${itemName || 'なし'}</span>`;
 
             if (itemName) {
@@ -1084,6 +1089,44 @@ document.addEventListener('DOMContentLoaded', () => {
             updateHubUI();
             showScreen('hub-screen');
         };
+    }
+
+    function updateGachaRecruitUI() {
+        const char = gameState.gachaRecruit;
+        if (!char) return;
+
+        const display = document.getElementById('gacha-result-display');
+        const stats = getTotalStats(char);
+        const race = RACE_MASTER_DATA[char.race];
+        const traits = char.traits.map(t => TRAIT_MASTER_DATA[t].name).join(', ');
+
+        display.innerHTML = `
+            <p><strong>ジョブ:</strong> ${char.job}</p>
+            <p><strong>種族:</strong> ${race.name} | <strong>特性:</strong> ${traits}</p>
+            <p><strong>ステータス:</strong></p>
+            <ul>
+                <li>❤️ HP: ${stats.maxHp}</li>
+                <li>💧 MP: ${stats.maxMp}</li>
+                <li>⚔️ STR: ${stats.str}</li>
+                <li>🛡️ VIT: ${stats.vit}</li>
+                <li>🧙 INT: ${stats.int}</li>
+                <li>🙏 MND: ${stats.mnd}</li>
+                <li>🏃 AGI: ${stats.agi}</li>
+                <li>🍀 LUK: ${stats.luk}</li>
+            </ul>
+        `;
+    }
+
+    function startGachaRecruitment() {
+        // Create a temporary character. The name will be set later.
+        const jobKeys = Object.keys(JOB_MASTER_DATA);
+        const randomJob = jobKeys[Math.floor(Math.random() * jobKeys.length)];
+        gameState.gachaRecruit = createCharacter('（まだ仲間になっていない）', randomJob);
+
+        updateGachaRecruitUI();
+        document.getElementById('gacha-name-input-section').classList.add('hidden');
+        document.getElementById('gacha-recruit-buttons').classList.remove('hidden');
+        showScreen('gacha-recruit-screen');
     }
 
     function openPartyManagementScreen() {
@@ -1401,10 +1444,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('go-to-party-management-btn').addEventListener('click', openPartyManagementScreen);
         document.getElementById('go-to-shop-btn').addEventListener('click', openShopScreen);
-        document.getElementById('recruit-member-btn').addEventListener('click', () => {
-            document.getElementById('character-creation-title').textContent = "新しい仲間を勧誘";
-            document.getElementById('cancel-creation-btn').classList.remove('hidden');
-            showScreen('character-creation-screen');
+        document.getElementById('recruit-member-btn').addEventListener('click', startGachaRecruitment);
+
+        // Gacha Screen Listeners
+        document.getElementById('reroll-recruit-btn').addEventListener('click', startGachaRecruitment);
+        document.getElementById('back-to-party-from-gacha').addEventListener('click', openPartyManagementScreen);
+
+        document.getElementById('accept-recruit-btn').addEventListener('click', () => {
+            document.getElementById('gacha-recruit-buttons').classList.add('hidden');
+            document.getElementById('gacha-name-input-section').classList.remove('hidden');
+            document.getElementById('gacha-char-name').focus();
+        });
+
+        document.getElementById('confirm-recruit-name-btn').addEventListener('click', () => {
+            const name = document.getElementById('gacha-char-name').value;
+            if (!name) {
+                alert('名前を入力してください。');
+                return;
+            }
+            const newChar = gameState.gachaRecruit;
+            newChar.name = name;
+            gameState.roster.push(newChar);
+            gameState.gachaRecruit = null;
+            document.getElementById('gacha-char-name').value = '';
+
+            logMessage(`${name} が仲間に加わった！`, 'hub', { className: 'log-levelup' });
+            openPartyManagementScreen();
         });
 
         document.getElementById('next-battle-btn').addEventListener('click', () => {
@@ -1447,7 +1512,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const commandBtn = e.target.closest('#command-window button');
-            if(commandBtn) {
+            if(commandBtn && !commandBtn.disabled) {
+                // Disable all command buttons to prevent multiple actions
+                document.querySelectorAll('#command-window button').forEach(btn => btn.disabled = true);
+
                 const command = commandBtn.dataset.command;
                 const actor = gameState.battle.activeCharacter;
                 const validEnemies = gameState.battle.monsters.filter(m => m.hp > 0);

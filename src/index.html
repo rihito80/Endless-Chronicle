@@ -30,6 +30,23 @@
             <button id="cancel-creation-btn" class="hidden">キャンセル</button>
         </div>
 
+        <!-- Gacha Recruit Screen -->
+        <div id="gacha-recruit-screen" class="screen hidden">
+            <h2>新しい仲間</h2>
+            <div id="gacha-result-display" class="character-card" style="margin-bottom: 20px;">
+                <!-- Character details will be populated here by JS -->
+            </div>
+            <div id="gacha-recruit-buttons">
+                <button id="accept-recruit-btn">この仲間を迎える</button>
+                <button id="reroll-recruit-btn">別の候補を探す</button>
+            </div>
+            <div id="gacha-name-input-section" class="hidden" style="margin-top: 20px;">
+                <input type="text" id="gacha-char-name" placeholder="名前を入力">
+                <button id="confirm-recruit-name-btn">決定</button>
+            </div>
+            <button id="back-to-party-from-gacha" style="margin-top: 20px;">パーティ編成へ戻る</button>
+        </div>
+
         <!-- 拠点画面 -->
         <div id="hub-screen" class="screen hidden">
             <h2>拠点</h2>
@@ -133,10 +150,10 @@
                 <div id="party-status-battle"></div>
                 <div id="command-container">
                     <div id="command-window">
-                        <button data-command="attack">こうげき</button>
-                        <button data-command="skill">スキル</button>
-                        <button data-command="defend">ぼうぎょ</button>
-                        <button data-command="item">アイテム</button>
+                        <button data-command="attack">⚔️ こうげき</button>
+                        <button data-command="skill">✨ スキル</button>
+                        <button data-command="defend">🛡️ ぼうぎょ</button>
+                        <button data-command="item">👜 アイテム</button>
                     </div>
                     <div id="skill-window" class="sub-window hidden">
                         <button class="back-to-command">戻る</button>
